@@ -3,13 +3,23 @@ import AVFoundation
 import UniformTypeIdentifiers
 import ImageIO
 
-/// One wedge on the wheel. `run` happens off the main thread and returns the files it made.
+/// The work behind a wedge. It runs off the main thread and returns the files it made.
+typealias Job = ([URL]) throws -> [URL]
+
+enum Work {
+    case now(Job)
+    /// Needs a choice first (Crop): on the main thread it asks, then hands back the job to run.
+    /// If the person cancels it never calls back.
+    case ask(@MainActor ([URL], @escaping @MainActor (@escaping Job) -> Void) -> Void)
+}
+
+/// One wedge on the wheel.
 struct Action {
     let label: String
     let detail: String
     let symbol: String?          // nil = a format wedge (text), set = a tool wedge (icon + text)
     let verb: String             // shown in the status pill while working
-    let run: ([URL]) throws -> [URL]
+    let work: Work
 }
 
 enum Kind { case image, video, audio, pdf, doc, archive, other }
@@ -89,12 +99,20 @@ enum Catalog {
     }
 
     static func format(_ label: String, _ detail: String, _ run: @escaping ([URL]) throws -> [URL]) -> Action {
-        Action(label: label, detail: detail, symbol: nil, verb: "Converting to \(label)", run: run)
+        Action(label: label, detail: detail, symbol: nil, verb: "Converting to \(label)", work: .now(run))
     }
 
     static func tool(_ label: String, _ symbol: String, _ verb: String, _ run: @escaping ([URL]) throws -> [URL]) -> Action {
-        Action(label: label, detail: "", symbol: symbol, verb: verb, run: run)
+        Action(label: label, detail: "", symbol: symbol, verb: verb, work: .now(run))
     }
+
+    /// Images, PDFs and documents: the crop window opens beside the wheel, the person picks the area
+    /// (starting from the empty edges trimmed), and Done crops each file to it.
+    static let crop = Action(label: "Crop", detail: "", symbol: "crop", verb: "Cropping", work: .ask { urls, go in
+        CropPanel.shared.choose(urls,
+                                picked: { picks in go { _ in try picks.map { try Engine.crop($0.url, to: $0.area) } } },
+                                failed: { error in go { _ in throw error } })
+    })
 
     static let zip = tool("ZIP", "archivebox", "Zipping") { try [Engine.zip($0)] }
     static let extract = tool("Extract", "archivebox", "Extracting", each(Engine.extract))
@@ -126,7 +144,7 @@ enum Catalog {
         let many = urls.count > 1
         out.append(Action(label: "PDF", detail: many ? "Combine" : "Document", symbol: nil,
                           verb: many ? "Combining into a PDF" : "Making a PDF",
-                          run: { try [Engine.mergeToPDF($0)] }))
+                          work: .now { try [Engine.mergeToPDF($0)] }))
         return out
     }
 
@@ -135,7 +153,7 @@ enum Catalog {
             tool("Compress", "arrow.down.circle", "Compressing", each(Engine.compressImage)),
             tool("Half size", "arrow.down.right.and.arrow.up.left", "Resizing", each { try Engine.resizeImage($0, factor: 0.5) }),
             tool("1080p", "tv", "Resizing to 1080p", each { try Engine.resizeImage($0, maxSide: 1920) }),
-            tool("Crop", "crop", "Trimming the edges", each(Engine.cropImage)),
+            crop,
             tool("Square", "square", "Cropping to a square", each(Engine.squareImage)),
             tool("Rotate", "rotate.right", "Rotating", each(Engine.rotateImage)),
             tool("Flip", "arrow.left.and.right", "Flipping", each(Engine.flipImage)),
@@ -161,7 +179,7 @@ enum Catalog {
         var list = [tool("Compress", "arrow.down.circle", "Compressing", each(Engine.compressPDF))]
         if urls.count > 1 { list.append(merge) }
         list += [
-            tool("Crop", "crop", "Trimming the margins", each(Engine.cropPDF)),
+            crop,
             tool("Split", "scissors", "Splitting pages", each(Engine.splitPDF)),
             tool("Rotate", "rotate.right", "Rotating pages", each(Engine.rotatePDF)),
             tool("OCR", "text.viewfinder", "Recognising text", each(Engine.ocrPDF)),
@@ -294,7 +312,7 @@ enum Catalog {
         if urls.count > 1 {
             list.append(tool("Merge", "doc.on.doc", "Merging documents") { try [Engine.mergeDocs($0)] })
         }
-        list.append(tool("Crop", "crop", "Trimming to a PDF", each(Engine.cropDoc)))
+        list.append(crop)
         list.append(zip)
         return list
     }

@@ -63,7 +63,7 @@ Run the same line again. It compares the version you have with the latest on Git
 | **Several images and PDFs together** | — | Merge into one PDF, ZIP |
 | **Anything else, including folders** | — | ZIP |
 
-Drag several files of the same kind and the action runs on each one; Merge and Join combine them in the order you dragged them. **Crop** trims the empty edges around whatever is in the file: the background around a photo or screenshot, the white margins of a PDF page, the margins of a document (saved as a PDF).
+Drag several files of the same kind and the action runs on each one; Merge and Join combine them in the order you dragged them. **Crop** opens a small window beside the wheel with your picture, the empty edges already trimmed as a starting point. Drag the corners or edges to resize, drag inside to move it, or drag anywhere else for a new area; press **Done** (or Return) to crop, Esc to leave the file alone. A PDF gets the same area on every page; a document is laid out as a PDF first.
 
 ## Private by design
 

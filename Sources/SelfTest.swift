@@ -49,7 +49,7 @@ enum SelfTest {
         check(Catalog.actions(for: [at("scan.pdf")], tools: true).contains { $0.label == "Crop" }, "a PDF is offered Crop")
         check(Catalog.actions(for: [at("notes.docx")], tools: true).contains { $0.label == "Crop" }, "a Word doc is offered Crop")
 
-        // The real engine, on real files: Flip mirrors, Crop trims to the ink.
+        // The real engine, on real files: Flip mirrors, Crop starts from the ink and cuts what was picked.
         do {
             let red = CGColor(srgbRed: 1, green: 0, blue: 0, alpha: 1), blue = CGColor(srgbRed: 0, green: 0, blue: 1, alpha: 1)
             let pair = try makePNG(in: dir, "pair.png", 2, 1) { ctx in
@@ -64,16 +64,28 @@ enum SelfTest {
                 ctx.setFillColor(CGColor(gray: 1, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 30))
                 ctx.setFillColor(CGColor(gray: 0, alpha: 1)); ctx.fill(CGRect(x: 12, y: 30 - 8 - 6, width: 10, height: 6))
             }
-            let cropped = try Engine.cropImage(sheet)
-            let size = Engine.pixelSize(cropped)
-            check(size?.0 == 10 && size?.1 == 6, "Crop trims an image to its ink (got \(String(describing: size)))")
+            let start = try Engine.cropPreview(sheet).start
+            let block = CGRect(x: 12.0 / 40, y: 8.0 / 30, width: 10.0 / 40, height: 6.0 / 30)
+            let startsOnInk = abs(start.minX - block.minX) < 0.01 && abs(start.minY - block.minY) < 0.01
+                && abs(start.width - block.width) < 0.01 && abs(start.height - block.height) < 0.01
+            check(startsOnInk, "the crop window starts from the trimmed edges (got \(start), want \(block))")
+            let size = try Engine.pixelSize(Engine.crop(sheet, to: block))
+            check(size?.0 == 10 && size?.1 == 6, "Crop cuts an image to the picked area (got \(String(describing: size)))")
 
-            let pdf = try Engine.cropPDF(Engine.mergeToPDF([sheet]))
-            let crop = try Engine.openPDF(pdf).page(at: 0)?.bounds(for: .cropBox) ?? .zero
-            let want = CGRect(x: 10, y: 14, width: 14, height: 10)   // the block in PDF points, plus 2pt of air
-            let near = abs(crop.minX - want.minX) < 1.5 && abs(crop.minY - want.minY) < 1.5
-                && abs(crop.width - want.width) < 1.5 && abs(crop.height - want.height) < 1.5
-            check(near, "Crop trims a PDF page to its ink (got \(crop), want \(want))")
+            // A PDF page shown upright or turned: pick the block as it's shown, and the cropped page shows only the block.
+            let pdf = try Engine.mergeToPDF([sheet])
+            for degrees in [0, 90, 180, 270] {
+                let doc = try Engine.openPDF(pdf)
+                doc.page(at: 0)?.rotation = degrees
+                let turned = try Engine.writePDF(doc, to: dir.appendingPathComponent("turned-\(degrees).pdf"))
+                let picked = try Engine.cropPreview(turned).start
+                guard let page = try Engine.openPDF(Engine.crop(turned, to: picked)).page(at: 0) else {
+                    failures.append("the cropped \(degrees)° PDF has no page")
+                    continue
+                }
+                let ink = darkShare(try rgba(Engine.render(page)))
+                check(ink > 0.85, "a page turned \(degrees)° crops to what was picked (\(Int(ink * 100))% of it is the block)")
+            }
         } catch {
             failures.append("engine check threw: \(error.localizedDescription)")
         }
@@ -91,9 +103,19 @@ enum SelfTest {
         return url
     }
 
+    /// The share of pixels that are near black.
+    private static func darkShare(_ bytes: [UInt8]) -> Double {
+        var dark = 0
+        for i in stride(from: 0, to: bytes.count, by: 4) where bytes[i] < 80 && bytes[i + 1] < 80 && bytes[i + 2] < 80 { dark += 1 }
+        return bytes.isEmpty ? 0 : Double(dark) / Double(bytes.count / 4)
+    }
+
     /// The file's pixels as sRGB RGBA bytes, top row first.
     private static func rgba(_ url: URL) throws -> [UInt8] {
-        let image = try Engine.loadImage(url)
+        try rgba(Engine.loadImage(url))
+    }
+
+    private static func rgba(_ image: CGImage) throws -> [UInt8] {
         let w = image.width, h = image.height
         var bytes = [UInt8](repeating: 0, count: w * h * 4)
         let drawn = bytes.withUnsafeMutableBytes { raw -> Bool in
@@ -103,7 +125,7 @@ enum SelfTest {
             ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
             return true
         }
-        guard drawn else { throw ConvmogError("couldn't read \(url.lastPathComponent)") }
+        guard drawn else { throw ConvmogError("couldn't read the test picture") }
         return bytes
     }
 }
