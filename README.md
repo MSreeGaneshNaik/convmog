@@ -34,7 +34,7 @@ Convmog needs macOS 13 or later and Apple's Command Line Tools. If they're missi
 |---|---|
 | Drag a file and hold <kbd>⇧</kbd> | A wheel blooms around the cursor with only the formats this file can become |
 | Move over a wedge | It lifts toward you, the trackpad ticks, and the centre names the action |
-| Add <kbd>⌥</kbd> | The wheel swaps to tools: compress, resize, rotate, strip metadata and more |
+| Add <kbd>⌥</kbd> | The wheel swaps to tools: compress, crop, resize, rotate, strip metadata and more |
 | Let go on a wedge | The result is saved beside the original and a pill shows the size before and after |
 | Let go anywhere else | Nothing happens — it was an ordinary drag |
 | Click the pill | Finder opens with the new file selected |
@@ -50,16 +50,16 @@ Convmog needs macOS 13 or later and Apple's Command Line Tools. If they're missi
 
 | Drag | <kbd>⇧</kbd> Formats | <kbd>⇧</kbd> <kbd>⌥</kbd> Tools |
 |---|---|---|
-| **Images** — HEIC, PNG, JPG, RAW, PSD, WebP, TIFF… | JPG, PNG, HEIC, TIFF, GIF, BMP, ICO, ICNS, PDF | Compress, Half size, 1080p, Square, Rotate, Flip, Mono, No EXIF, ZIP |
-| **PDF** | PNG pages, JPG pages, DOCX, RTF, TXT | Compress, Merge, Split, Rotate, OCR, Cover, Clean, ZIP |
+| **Images** — HEIC, PNG, JPG, RAW, PSD, WebP, TIFF… | JPG, PNG, HEIC, TIFF, GIF, BMP, ICO, ICNS, PDF | Compress, Half size, 1080p, Crop, Square, Rotate, Flip, Mono, No EXIF, ZIP |
+| **PDF** | PNG pages, JPG pages, DOCX, RTF, TXT | Compress, Merge, Crop, Split, Rotate, OCR, Cover, Clean, ZIP |
 | **Video** — MP4, MOV, M4V | MP4, MOV, M4V, GIF, M4A, WAV | 720p, HEVC, 540p, Mute, Frame, Clean, Join, ZIP |
 | **Audio** — MP3, M4A, WAV, AIFF, FLAC | M4A, WAV, AIFF, FLAC | Compress, Mono, Ringtone, Join, ZIP |
-| **Documents** — DOCX, RTF, HTML, ODT, TXT, Markdown | PDF, DOCX, TXT, RTF, HTML, ODT, DOC | Merge, ZIP |
+| **Documents** — DOCX, RTF, HTML, ODT, TXT, Markdown | PDF, DOCX, TXT, RTF, HTML, ODT, DOC | Merge, Crop (to a PDF), ZIP |
 | **Archives** — ZIP, TAR.GZ, 7Z, RAR | Extract | — |
 | **Several images and PDFs together** | — | Merge into one PDF, ZIP |
 | **Anything else, including folders** | — | ZIP |
 
-Drag several files of the same kind and the action runs on each one; Merge and Join combine them in the order you dragged them.
+Drag several files of the same kind and the action runs on each one; Merge and Join combine them in the order you dragged them. **Crop** trims the empty edges around whatever is in the file: the background around a photo or screenshot, the white margins of a PDF page, the margins of a document (saved as a PDF).
 
 ## Private by design
 

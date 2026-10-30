@@ -50,7 +50,7 @@ final class WheelController {
         root.addSubview(wheel)
         panel.contentView = root
 
-        wheel.onDrop = { [weak self] index in self?.pick(index) }
+        wheel.onDrop = { [weak self] action in self?.pick(action) }
     }
 
     func show(urls: [URL], convert: [Action], tools: [Action], toolsMode: Bool, at point: NSPoint) {
@@ -121,11 +121,8 @@ final class WheelController {
         })
     }
 
-    private func pick(_ index: Int) {
-        let actions = toolsMode ? tools : convert
-        guard actions.indices.contains(index) else { return }
+    private func pick(_ chosen: Action) {
         NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
-        let chosen = actions[index]
         let files = urls
         dismiss(picked: true)
         onPick?(chosen, files)
@@ -142,7 +139,12 @@ final class WheelView: NSView {
     static let inner: CGFloat = 66
     static let hubRadius: CGFloat = 54
 
-    var onDrop: ((Int) -> Void)?
+    var onDrop: ((Action) -> Void)?
+
+    /// Letting go of ⌥ a hair before the mouse is one motion. For this long after the wheel switches,
+    /// a drop still applies the wedge that was under the cursor before the switch.
+    static let graceAfterSwitch: CFTimeInterval = 0.35
+    private var aimedBeforeSwitch: (action: Action, at: CFTimeInterval)?
 
     private let root = CALayer()
     private let ring = CALayer()
@@ -300,6 +302,11 @@ final class WheelView: NSView {
     }
 
     func setActions(_ actions: [Action], toolsMode: Bool, canSwitch: Bool, animated: Bool) {
+        if animated, let i = hovered, self.actions.indices.contains(i) {
+            aimedBeforeSwitch = (self.actions[i], CACurrentMediaTime())
+        } else if !animated {
+            aimedBeforeSwitch = nil
+        }
         self.actions = actions
         self.toolsMode = toolsMode
         self.canSwitch = canSwitch
@@ -427,22 +434,25 @@ final class WheelView: NSView {
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { track(sender) }
     override func draggingExited(_ sender: NSDraggingInfo?) { setHovered(nil) }
 
-    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        if let i = hovered, i >= 0 { return true }
-        return false
-    }
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { dropTarget != nil }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        guard let i = hovered, i >= 0 else { return false }
-        Task { @MainActor in self.onDrop?(i) }
+        guard let action = dropTarget else { return false }
+        Task { @MainActor in self.onDrop?(action) }
         return true
+    }
+
+    /// The wedge a drop applies: the one aimed at just before a ⌥ switch, else the one under the cursor.
+    private var dropTarget: Action? {
+        if let aimed = aimedBeforeSwitch, CACurrentMediaTime() - aimed.at < Self.graceAfterSwitch { return aimed.action }
+        if let i = hovered, actions.indices.contains(i) { return actions[i] }
+        return nil
     }
 
     private func track(_ sender: NSDraggingInfo) -> NSDragOperation {
         let p = convert(sender.draggingLocation, from: nil)
         setHovered(zone(at: p))
-        if let i = hovered, i >= 0 { return .copy }
-        return []
+        return dropTarget != nil ? .copy : []
     }
 
     // MARK: Text helpers
