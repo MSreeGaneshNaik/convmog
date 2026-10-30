@@ -109,13 +109,19 @@ enum SelfTest {
                   "RAW and JPEG count as opaque, a transparent PNG doesn't")
 
             // An animated GIF is refused by image tools rather than quietly cut down to one frame.
+            // Two different frames with a delay, like a real animation (identical frames can be merged into one).
             let anim = dir.appendingPathComponent("anim.gif")
+            let second = try makePNG(in: dir, "second.png", 2, 1) { ctx in
+                ctx.setFillColor(blue); ctx.fill(CGRect(x: 0, y: 0, width: 2, height: 1))
+            }
+            let delay = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 0.1]] as CFDictionary
             if let gif = CGImageDestinationCreateWithURL(anim as CFURL, "com.compuserve.gif" as CFString, 2, nil) {
-                let frame = try Engine.loadImage(pair)
-                CGImageDestinationAddImage(gif, frame, nil)
-                CGImageDestinationAddImage(gif, frame, nil)
+                CGImageDestinationAddImage(gif, try Engine.flatten(Engine.loadImage(pair)), delay)
+                CGImageDestinationAddImage(gif, try Engine.flatten(Engine.loadImage(second)), delay)
                 CGImageDestinationFinalize(gif)
             }
+            let frames = CGImageSourceCreateWithURL(anim as CFURL, nil).map(CGImageSourceGetCount) ?? 0
+            check(frames == 2, "the test GIF has two frames (got \(frames))")
             check((try? Engine.rotateImage(anim)) == nil, "Rotate refuses an animated GIF")
 
             // One broken file in a batch: the rest still run, and the error says how far it got.
