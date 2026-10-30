@@ -58,6 +58,8 @@ enum Catalog {
     static func kind(_ url: URL) -> Kind {
         let e = ext(url)
         if e == "pdf" { return .pdf }
+        // .ts and .mts are TypeScript as often as video, so those count as video only if the bytes say so.
+        if ["ts", "mts", "m2ts"].contains(e) { return looksLikeTransportStream(url) ? .video : .other }
         if anyVideo.contains(e) { return .video }
         if anyAudio.contains(e) { return .audio }
         if docs.contains(e) { return .doc }
@@ -66,8 +68,19 @@ enum Catalog {
         return .other
     }
 
+    /// An MPEG transport stream: a 0x47 sync byte every 188 bytes, or every 192 for camera (AVCHD) files.
+    static func looksLikeTransportStream(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let b = [UInt8]((try? handle.read(upToCount: 200)) ?? Data())
+        return (b.count > 188 && b[0] == 0x47 && b[188] == 0x47) || (b.count > 196 && b[4] == 0x47 && b[196] == 0x47)
+    }
+
     static func wantsFFmpeg(_ urls: [URL]) -> Bool {
-        Engine.ffmpeg == nil && urls.contains { anyVideo.subtracting(avVideo).union(anyAudio.subtracting(afAudio)).contains(ext($0)) }
+        Engine.ffmpeg == nil && urls.contains { u in
+            let k = kind(u)
+            return (k == .video && !avVideo.contains(ext(u))) || (k == .audio && !afAudio.contains(ext(u)))
+        }
     }
 
     static func actions(for urls: [URL], tools: Bool) -> [Action] {
@@ -95,7 +108,20 @@ enum Catalog {
     // MARK: Builders
 
     static func each(_ f: @escaping (URL) throws -> URL) -> ([URL]) throws -> [URL] {
-        { urls in try urls.map(f) }
+        { urls in try gather(urls, name: \.lastPathComponent, f) }
+    }
+
+    /// Runs `f` on every item, even after one fails, so one bad photo in a batch doesn't stop the rest.
+    /// A single item fails with its own error; a batch reports how far it got, keeping what was made.
+    static func gather<T>(_ items: [T], name: (T) -> String, _ f: (T) throws -> URL) throws -> [URL] {
+        var made: [URL] = []
+        var first: (item: T, error: Error)?
+        for item in items {
+            do { made.append(try f(item)) } catch { if first == nil { first = (item, error) } }
+        }
+        guard let failed = first else { return made }
+        if items.count == 1 { throw failed.error }
+        throw PartialFailure(made: made, message: "\(made.count) of \(items.count) done · \(name(failed.item)): \(failed.error.localizedDescription)")
     }
 
     static func format(_ label: String, _ detail: String, _ run: @escaping ([URL]) throws -> [URL]) -> Action {
@@ -110,7 +136,9 @@ enum Catalog {
     /// (starting from the empty edges trimmed), and Done crops each file to it.
     static let crop = Action(label: "Crop", detail: "", symbol: "crop", verb: "Cropping", work: .ask { urls, go in
         CropPanel.shared.choose(urls,
-                                picked: { picks in go { _ in try picks.map { try Engine.crop($0.url, to: $0.area) } } },
+                                picked: { picks in
+                                    go { _ in try gather(picks, name: { $0.url.lastPathComponent }) { try Engine.crop($0.url, to: $0.area) } }
+                                },
                                 failed: { error in go { _ in throw error } })
     })
 
@@ -152,7 +180,7 @@ enum Catalog {
         [
             tool("Compress", "arrow.down.circle", "Compressing", each(Engine.compressImage)),
             tool("Half size", "arrow.down.right.and.arrow.up.left", "Resizing", each { try Engine.resizeImage($0, factor: 0.5) }),
-            tool("1080p", "tv", "Resizing to 1080p", each { try Engine.resizeImage($0, maxSide: 1920) }),
+            tool("1080p", "tv", "Resizing to 1080p", each { try Engine.resizeImage($0, fitting: 1920, 1080) }),
             crop,
             tool("Square", "square", "Cropping to a square", each(Engine.squareImage)),
             tool("Rotate", "rotate.right", "Rotating", each(Engine.rotateImage)),
@@ -237,8 +265,8 @@ enum Catalog {
         } else if Engine.ffmpeg != nil {
             list.append(tool("Compress", "arrow.down.circle", "Compressing",
                              each { try Engine.ff($0, ext: "mp4", suffix: "-small",
-                                                  args: ["-c:v", "libx264", "-preset", "medium", "-crf", "28", "-pix_fmt", "yuv420p",
-                                                         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"]) }))
+                                                  args: Engine.x264 + ["-preset", "medium", "-crf", "28",
+                                                                       "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"]) }))
         }
         list.append(zip)
         return list
@@ -252,8 +280,9 @@ enum Catalog {
         if native {
             let targets: [(String, String, String, [String])] = [
                 ("M4A", "m4a", "AAC", ["-f", "m4af", "-d", "aac", "-b", "256000"]),
-                ("WAV", "wav", "Lossless", ["-f", "WAVE", "-d", "LEI16"]),
-                ("AIFF", "aiff", "Lossless", ["-f", "AIFF", "-d", "BEI16"]),
+                // 24-bit, so a 24-bit FLAC or studio file keeps every bit; 16-bit sources are padded, still lossless.
+                ("WAV", "wav", "Lossless", ["-f", "WAVE", "-d", "LEI24"]),
+                ("AIFF", "aiff", "Lossless", ["-f", "AIFF", "-d", "BEI24"]),
                 ("FLAC", "flac", "Lossless", ["-f", "flac", "-d", "flac"]),
             ]
             for (label, e, detail, args) in targets where !allAre(urls, e) {
