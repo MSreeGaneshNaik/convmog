@@ -87,6 +87,7 @@ git clone https://github.com/MSreeGaneshNaik/convmog.git
 cd convmog
 ./build.sh             # build and launch from ./build
 ./build.sh --install   # or install into /Applications
+./build.sh --check     # build and self-test only, as CI does on every push
 ```
 
 There is no Xcode project — just `swiftc` and about 2,200 lines of Swift.
