@@ -1,11 +1,11 @@
 #!/bin/bash
-# Builds Morph.app with the Swift compiler that ships with Xcode's Command Line Tools.
+# Builds Convmog.app with the Swift compiler that ships with Xcode's Command Line Tools.
 #   ./build.sh            build and launch from ./build
 #   ./build.sh --install  build, copy to /Applications, and launch
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP="build/Morph.app"
+APP="build/Convmog.app"
 ARCH="$(uname -m)"
 
 if ! command -v swiftc >/dev/null 2>&1; then
@@ -13,7 +13,7 @@ if ! command -v swiftc >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "→ Compiling Morph for $ARCH…"
+echo "→ Compiling Convmog for $ARCH…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
@@ -21,7 +21,7 @@ swiftc -O -parse-as-library -swift-version 5 -suppress-warnings \
   -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
   -target "$ARCH-apple-macos13.0" \
   Sources/*.swift \
-  -o "$APP/Contents/MacOS/Morph"
+  -o "$APP/Contents/MacOS/Convmog"
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
@@ -37,16 +37,16 @@ if [ -f Resources/AppIcon.png ]; then
 fi
 
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
-"$APP/Contents/MacOS/Morph" --selftest || { echo "✗ Self-test failed — not launching this build."; exit 1; }
+"$APP/Contents/MacOS/Convmog" --selftest || { echo "✗ Self-test failed — not launching this build."; exit 1; }
 echo "✓ Built $APP"
 
-pkill -x Morph 2>/dev/null || true
+pkill -x Convmog 2>/dev/null || true
 sleep 0.3
 
 if [[ "${1:-}" == "--install" ]]; then
-  rm -rf /Applications/Morph.app
+  rm -rf /Applications/Convmog.app
   cp -R "$APP" /Applications/
-  open /Applications/Morph.app
+  open /Applications/Convmog.app
   echo "✓ Installed to /Applications and launched — look for ◌ in the menu bar"
 else
   open "$APP"

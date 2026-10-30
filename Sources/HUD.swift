@@ -194,7 +194,7 @@ final class HUD {
     }
 }
 
-/// Takes every click on the HUD, even while Morph isn't the active app.
+/// Takes every click on the HUD, even while Convmog isn't the active app.
 final class ClickCatcher: NSView {
     var onClick: (() -> Void)?
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
