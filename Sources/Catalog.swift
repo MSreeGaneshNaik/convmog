@@ -135,7 +135,8 @@ enum Catalog {
             tool("Compress", "arrow.down.circle", "Compressing", each(Engine.compressImage)),
             tool("Half size", "arrow.down.right.and.arrow.up.left", "Resizing", each { try Engine.resizeImage($0, factor: 0.5) }),
             tool("1080p", "tv", "Resizing to 1080p", each { try Engine.resizeImage($0, maxSide: 1920) }),
-            tool("Square", "crop", "Cropping", each(Engine.squareImage)),
+            tool("Crop", "crop", "Trimming the edges", each(Engine.cropImage)),
+            tool("Square", "square", "Cropping to a square", each(Engine.squareImage)),
             tool("Rotate", "rotate.right", "Rotating", each(Engine.rotateImage)),
             tool("Flip", "arrow.left.and.right", "Flipping", each(Engine.flipImage)),
             tool("Mono", "circle.lefthalf.filled", "Going black & white", each(Engine.monoImage)),
@@ -160,6 +161,7 @@ enum Catalog {
         var list = [tool("Compress", "arrow.down.circle", "Compressing", each(Engine.compressPDF))]
         if urls.count > 1 { list.append(merge) }
         list += [
+            tool("Crop", "crop", "Trimming the margins", each(Engine.cropPDF)),
             tool("Split", "scissors", "Splitting pages", each(Engine.splitPDF)),
             tool("Rotate", "rotate.right", "Rotating pages", each(Engine.rotatePDF)),
             tool("OCR", "text.viewfinder", "Recognising text", each(Engine.ocrPDF)),
@@ -292,6 +294,7 @@ enum Catalog {
         if urls.count > 1 {
             list.append(tool("Merge", "doc.on.doc", "Merging documents") { try [Engine.mergeDocs($0)] })
         }
+        list.append(tool("Crop", "crop", "Trimming to a PDF", each(Engine.cropDoc)))
         list.append(zip)
         return list
     }
