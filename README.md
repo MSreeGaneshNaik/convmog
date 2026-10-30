@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" height="128" alt="Convmog app icon: a white glass wheel of wedges with one lit in saffron">
+  <img src="assets/icon.png" width="128" height="128" alt="Convmog app icon: six saffron petals on a white glass tile">
 </p>
 
-<h1 align="center">Convmog</h1>
+<h1 align="center">Convmog <sub>by Jericho</sub></h1>
 
 <p align="center">
   Hold <kbd>⇧</kbd> while dragging any file and drop it on a format.<br>
@@ -24,7 +24,7 @@ Paste this into Terminal:
 curl -fsSL https://raw.githubusercontent.com/MSreeGaneshNaik/convmog/main/install.sh | bash
 ```
 
-It downloads the source, builds Convmog on your Mac with Apple's own Swift compiler, puts it in Applications and opens it. About a minute, no account, no dependencies. Look for ◌ in the menu bar and choose **Open at Login** to keep it running.
+It downloads the source, builds Convmog on your Mac with Apple's own Swift compiler, puts it in Applications and opens it. About a minute, no account, no dependencies. Look for the petal mark in the menu bar and choose **Open at Login** to keep it running.
 
 Convmog needs macOS 13 or later and Apple's Command Line Tools. If they're missing, the installer opens Apple's installer for you — run the same line again when it finishes.
 
@@ -109,4 +109,4 @@ There is no Xcode project — just `swiftc` and about 2,200 lines of Swift.
 
 ## Credits
 
-The ⇧-drag radial gesture was inspired by Tangerine, a Mac app by Leap Studio. Convmog is an independent, from-scratch implementation.
+Convmog is made by Jericho, and the petal mark is Jericho's. The ⇧-drag radial gesture was inspired by Tangerine, a Mac app by Leap Studio. Convmog is an independent, from-scratch implementation.

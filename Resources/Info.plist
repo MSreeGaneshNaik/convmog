@@ -12,6 +12,8 @@
 	<string>Convmog</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Convmog by Jericho</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
