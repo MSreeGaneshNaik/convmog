@@ -270,6 +270,59 @@ enum Engine {
         return try saveSame(out, like: src, suffix: "-flipped")
     }
 
+    /// Everything that differs from the corner colour, in top-down pixel coordinates; nil when the image is one flat colour.
+    /// Big images are scanned at up to 2000px and the box is rounded outwards, so no content is shaved.
+    static func contentRect(_ image: CGImage) throws -> CGRect? {
+        let k = min(1, 2000 / CGFloat(max(image.width, image.height)))
+        let w = max(1, Int(CGFloat(image.width) * k)), h = max(1, Int(CGFloat(image.height) * k))
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = ctx.data else { throw ConvmogError("Not enough memory for that image") }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let px = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+        let br = Int(px[0]), bg = Int(px[1]), bb = Int(px[2]), ba = Int(px[3])
+        let clearEdges = ba < 16
+        let tolerance = 24
+        var minX = w, minY = h, maxX = -1, maxY = -1
+        for y in 0..<h {
+            for x in 0..<w {
+                let i = (y * w + x) * 4
+                let a = Int(px[i + 3])
+                var differs: Bool
+                if clearEdges {
+                    differs = a >= 16
+                } else {
+                    differs = abs(Int(px[i]) - br) > tolerance
+                    differs = differs || abs(Int(px[i + 1]) - bg) > tolerance
+                    differs = differs || abs(Int(px[i + 2]) - bb) > tolerance
+                    differs = differs || abs(a - ba) > tolerance
+                }
+                if differs {
+                    minX = min(minX, x); maxX = max(maxX, x)
+                    minY = min(minY, y); maxY = max(maxY, y)
+                }
+            }
+        }
+        guard maxX >= 0 else { return nil }
+        let pad = k < 1 ? 1 : 0
+        let x0 = max(0, Int((CGFloat(minX) / k).rounded(.down)) - pad)
+        let y0 = max(0, Int((CGFloat(minY) / k).rounded(.down)) - pad)
+        let x1 = min(image.width, Int((CGFloat(maxX + 1) / k).rounded(.up)) + pad)
+        let y1 = min(image.height, Int((CGFloat(maxY + 1) / k).rounded(.up)) + pad)
+        return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+
+    static func cropImage(_ src: URL) throws -> URL {
+        let image = try loadImage(src)
+        guard let r = try contentRect(image),
+              Int(r.width) < image.width || Int(r.height) < image.height,
+              let cropped = image.cropping(to: r) else {
+            throw ConvmogError("Nothing to crop — the edges aren't empty")
+        }
+        return try saveSame(cropped, like: src, suffix: "-cropped")
+    }
+
     static func monoImage(_ src: URL) throws -> URL {
         let image = try loadImage(src)
         let input = CIImage(cgImage: image)
@@ -414,6 +467,35 @@ enum Engine {
             if let page = doc.page(at: i) { page.rotation = (page.rotation + 90) % 360 }
         }
         return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-rotated"))
+    }
+
+    /// Trims each page's crop box to what's printed on it. Returns false when no page had empty edges.
+    static func cropPages(_ doc: PDFDocument) throws -> Bool {
+        let scale: CGFloat = 2
+        var changed = false
+        for i in 0..<doc.pageCount {
+            // shortcut: rotated pages are left as they are; map the box through the rotation if people need them.
+            guard let page = doc.page(at: i), page.rotation % 360 == 0 else { continue }
+            let media = page.bounds(for: .mediaBox)
+            let image = try render(page, scale: scale)
+            guard let r = try contentRect(image) else { continue }
+            // Pixels run top-down from the media box's top-left; PDF points run bottom-up. 2pt of air around the ink.
+            let ink = CGRect(x: media.minX + r.minX / scale - 2,
+                             y: media.minY + (CGFloat(image.height) - r.maxY) / scale - 2,
+                             width: r.width / scale + 4, height: r.height / scale + 4)
+            let current = page.bounds(for: .cropBox)
+            let trimmed = ink.intersection(current)
+            guard !trimmed.isNull, trimmed.width < current.width - 1 || trimmed.height < current.height - 1 else { continue }
+            page.setBounds(trimmed, for: .cropBox)
+            changed = true
+        }
+        return changed
+    }
+
+    static func cropPDF(_ src: URL) throws -> URL {
+        let doc = try openPDF(src)
+        guard try cropPages(doc) else { throw ConvmogError("Nothing to crop — the margins are already tight") }
+        return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-cropped"))
     }
 
     static func stripPDF(_ src: URL) throws -> URL {
@@ -636,6 +718,16 @@ enum Engine {
             return try producing(out) { try writeAttributed(text, to: out, ext: ext) }
         }
         return try producing(out) { try run("/usr/bin/textutil", ["-convert", ext, "-output", out.path, src.path]) }
+    }
+
+    /// A document laid out as a PDF with the page margins trimmed to the text.
+    static func cropDoc(_ src: URL) throws -> URL {
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("convmog-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: temp) }
+        try printPDF(loadDoc(src), to: temp)
+        let doc = try openPDF(temp)
+        _ = try cropPages(doc)
+        return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-cropped"))
     }
 
     static func mergeDocs(_ urls: [URL]) throws -> URL {
