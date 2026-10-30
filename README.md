@@ -10,7 +10,10 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo.svg" width="100%" alt="A photo is dragged out of a Finder window. Shift is held and a white glass wheel of formats appears around the cursor. The HEIC wedge lights up, the file is dropped, and photo.heic appears next to the original with a 4.2 MB to 1.1 MB size note.">
+  <picture>
+    <source media="(max-width: 600px)" srcset="assets/demo-phone.svg">
+    <img src="assets/demo.svg" width="100%" alt="A photo is dragged out of a Finder window. Shift is held and a white glass wheel of formats appears around the cursor. The HEIC wedge lights up, the file is dropped, and photo.heic appears next to the original with a 4.2 MB to 1.1 MB size note.">
+  </picture>
 </p>
 
 ## Install
@@ -37,7 +40,10 @@ Morph needs macOS 13 or later and Apple's Command Line Tools. If they're missing
 | Click the pill | Finder opens with the new file selected |
 
 <p align="center">
-  <img src="assets/modes.svg" width="100%" alt="Two white glass wheels for the same photo. Holding shift shows formats: JPG, HEIC, TIFF, GIF, BMP, ICO, ICNS and PDF. Adding option shows tools: Compress, Half size, 1080p, Square, Rotate, Flip, Mono, No EXIF and ZIP.">
+  <picture>
+    <source media="(max-width: 600px)" srcset="assets/modes-phone.svg">
+    <img src="assets/modes.svg" width="100%" alt="Two white glass wheels for the same photo. Holding shift shows formats: JPG, HEIC, TIFF, GIF, BMP, ICO, ICNS and PDF. Adding option shows tools: Compress, Half size, 1080p, Square, Rotate, Flip, Mono, No EXIF and ZIP.">
+  </picture>
 </p>
 
 ## Everything in the wheel
@@ -70,7 +76,8 @@ Morph picks it up on its own, no restart needed. Videos gain MP3, WebM, MKV and 
 ## Uninstall
 
 ```bash
-pkill -x Morph; rm -rf /Applications/Morph.app
+pkill -x Morph
+rm -rf /Applications/Morph.app
 ```
 
 ## Build from source

@@ -273,7 +273,7 @@ final class WheelView: NSView {
             title.position = CGPoint(x: c.x, y: c.y - 12)
             hub.addSublayer(title)
 
-            Self.style(hint, font: .systemFont(ofSize: 9.5, weight: .medium), color: Palette.muted, width: 86)
+            Self.style(hint, font: .systemFont(ofSize: 9.5, weight: .medium), color: Palette.muted, width: 92)   // the hub is ~93pt wide here
             hint.position = CGPoint(x: c.x, y: c.y - 27)
             hub.addSublayer(hint)
         }
@@ -397,7 +397,7 @@ final class WheelView: NSView {
             title.string = fileName
             title.foregroundColor = Palette.text.cgColor
             if canSwitch {
-                hint.string = toolsMode ? "Let go of ⌥ for formats" : "Hold ⌥ for tools"
+                hint.string = toolsMode ? "Let go of ⌥" : "Hold ⌥ for tools"
             } else {
                 hint.string = toolsMode ? "Tools" : "Drop on a format"
             }
