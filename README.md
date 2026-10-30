@@ -94,7 +94,7 @@ cd convmog
 ./build.sh --check     # build and self-test only, as CI does on every push
 ```
 
-There is no Xcode project — just `swiftc` and about 2,200 lines of Swift.
+There is no Xcode project — just `swiftc` and about 3,100 lines of Swift.
 
 | File | What it does |
 |---|---|
@@ -104,7 +104,8 @@ There is no Xcode project — just `swiftc` and about 2,200 lines of Swift.
 | [`Sources/HUD.swift`](Sources/HUD.swift) | The status pill at the bottom of the screen |
 | [`Sources/Catalog.swift`](Sources/Catalog.swift) | Which wedges each kind of file gets |
 | [`Sources/Engine.swift`](Sources/Engine.swift) | Every conversion and tool |
-| [`Sources/SelfTest.swift`](Sources/SelfTest.swift) | Checks the wedge maths, file naming and file kinds; `build.sh` runs it and won't launch a build that fails |
+| [`Sources/CropPanel.swift`](Sources/CropPanel.swift) | The crop window: the picture, the area you drag, Done and Cancel |
+| [`Sources/SelfTest.swift`](Sources/SelfTest.swift) | Runs the real engine on real test files (Flip, Rotate, Crop, orientation, batches, PDF pages at every rotation…); `build.sh` runs it and won't install a build that fails |
 
 ## Good to know
 

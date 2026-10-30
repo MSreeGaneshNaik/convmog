@@ -103,6 +103,11 @@ else
   step "Opening it from ./build"
   why "A trial run; ./build.sh --install puts it in /Applications."
 fi
+if [ "$MODE" = "--install" ]; then
+  # Copy the new app in beside the old one first, so a failed copy (a full disk) leaves the old one working.
+  rm -rf /Applications/Convmog.app.new
+  cp -R "$APP" /Applications/Convmog.app.new || die "Couldn't copy into /Applications. Your current Convmog is untouched."
+fi
 if pgrep -x Convmog >/dev/null 2>&1; then
   pkill -x Convmog 2>/dev/null || true
   ok "Quit the running Convmog so the new one can take its place"
@@ -110,7 +115,7 @@ if pgrep -x Convmog >/dev/null 2>&1; then
 fi
 if [ "$MODE" = "--install" ]; then
   rm -rf /Applications/Convmog.app
-  cp -R "$APP" /Applications/
+  mv /Applications/Convmog.app.new /Applications/Convmog.app
   open /Applications/Convmog.app
   ok "Installed and opened. Look for the petal mark in the menu bar."
 else

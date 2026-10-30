@@ -105,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 s?.play()
             }
         case .failure(let error):
+            if let partial = error as? PartialFailure, !partial.made.isEmpty { lastOutputs = partial.made }
             hud.show(.error, title: "Couldn't finish that", subtitle: error.localizedDescription)
         }
     }
