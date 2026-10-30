@@ -47,8 +47,8 @@ if [[ "${1:-}" == "--install" ]]; then
   rm -rf /Applications/Convmog.app
   cp -R "$APP" /Applications/
   open /Applications/Convmog.app
-  echo "✓ Installed to /Applications and launched — look for ◌ in the menu bar"
+  echo "✓ Installed to /Applications and launched — look for the petal mark in the menu bar"
 else
   open "$APP"
-  echo "✓ Launched — look for ◌ in the menu bar. Hold ⇧ while dragging any file."
+  echo "✓ Launched — look for the petal mark in the menu bar. Hold ⇧ while dragging any file."
 fi

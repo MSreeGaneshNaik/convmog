@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// `Convmog --selftest` checks what a wrong drop would depend on: wedge maths, naming, file kinds.
 /// build.sh runs it after compiling and refuses to install if anything fails.
@@ -37,6 +37,10 @@ enum SelfTest {
         let png = Catalog.actions(for: [at("photo.png")], tools: false).map(\.label)
         check(png.contains("JPG") && png.contains("PDF"), "a PNG is offered JPG and PDF (got \(png))")
         check(!png.contains("PNG"), "a PNG is not offered PNG")
+
+        // The mark's petal data parses and fills its 256 grid.
+        let box = Mark.path(side: 256).bounds
+        check(abs(box.width - 256) < 0.5 && abs(box.height - 256) < 0.5, "the mark fills its grid (got \(box))")
 
         print(failures.isEmpty ? "selftest: ok" : "selftest: FAILED\n  " + failures.joined(separator: "\n  "))
         return failures.isEmpty

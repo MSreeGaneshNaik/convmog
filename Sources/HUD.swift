@@ -177,7 +177,7 @@ final class HUD {
         switch state {
         case .done: return WheelView.symbol("checkmark.circle.fill", Palette.positive, 20)
         case .error: return WheelView.symbol("exclamationmark.circle.fill", Palette.negative, 20)
-        case .info, .working: return WheelView.symbol("circle.dashed", Palette.saffron, 20)
+        case .info, .working: return Mark.image(side: 18, color: Palette.saffron)
         }
     }
 

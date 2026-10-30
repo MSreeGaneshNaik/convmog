@@ -38,4 +38,4 @@ cd "$TMP"/convmog-*
 step "Building on this Mac (about a minute)"
 ./build.sh --install
 printf '\n  %sDone.%s Drag any file, hold ⇧, and drop it on a format.\n' "$G" "$N"
-printf '  %sKeep it running: click ◌ in the menu bar → Open at Login.%s\n\n' "$D" "$N"
+printf '  %sKeep it running: click the petal mark in the menu bar → Open at Login.%s\n\n' "$D" "$N"

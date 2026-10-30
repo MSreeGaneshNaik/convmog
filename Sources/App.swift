@@ -137,9 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func buildStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "Convmog")
-            image?.isTemplate = true
-            button.image = image
+            button.image = Mark.image(side: 16)
         }
         let menu = NSMenu()
         menu.delegate = self
@@ -220,6 +218,58 @@ enum Palette {
     static let lensHover = NSColor(white: 1, alpha: 0.72)
     static let positive = hex(0x2FA866)
     static let negative = hex(0xD93A56)
+}
+
+// MARK: - The mark (the Jericho petals, drawn as vectors so it's sharp at any size)
+
+enum Mark {
+    /// Six quarter-round petals on a 256 grid, y pointing down.
+    static let petals = [
+        "M 0 0 C 35.346 0 64 28.654 64 64 L 64 128 C 28.654 128 0 99.346 0 64 Z",
+        "M 192 64 C 192 99.346 163.346 128 128 128 C 92.654 128 64 99.346 64 64 L 64 0 C 99.346 0 128 28.654 128 64 C 128 28.654 156.654 0 192 0 Z",
+        "M 256 64 C 256 99.346 227.346 128 192 128 L 192 64 C 192 28.654 220.654 0 256 0 Z",
+        "M 64 192 C 64 227.346 35.346 256 0 256 L 0 192 C 0 156.654 28.654 128 64 128 Z",
+        "M 128 128 C 163.346 128 192 156.654 192 192 L 192 256 C 156.654 256 128 227.346 128 192 C 128 227.346 99.346 256 64 256 L 64 192 C 64 156.654 92.654 128 128 128 Z",
+        "M 192 128 C 227.346 128 256 156.654 256 192 L 256 256 C 220.654 256 192 227.346 192 192 Z",
+    ]
+
+    /// The petals as one path, `side` points wide, for a flipped (y-down) context.
+    static func path(side: CGFloat) -> NSBezierPath {
+        let s = side / 256, path = NSBezierPath()
+        for d in petals {
+            let t = d.split(separator: " ").map(String.init)
+            var i = 0
+            func point() -> NSPoint {
+                defer { i += 2 }
+                return NSPoint(x: CGFloat(Double(t[i])!) * s, y: CGFloat(Double(t[i + 1])!) * s)
+            }
+            while i < t.count {
+                let command = t[i]
+                i += 1
+                switch command {
+                case "M": path.move(to: point())
+                case "L": path.line(to: point())
+                case "C":
+                    let c1 = point(), c2 = point()
+                    path.curve(to: point(), controlPoint1: c1, controlPoint2: c2)
+                default: path.close()
+                }
+            }
+        }
+        return path
+    }
+
+    /// No colour → a template image that follows the menu bar's light and dark.
+    static func image(side: CGFloat, color: NSColor? = nil) -> NSImage {
+        let image = NSImage(size: NSSize(width: side, height: side), flipped: true) { rect in
+            (color ?? .black).setFill()
+            Mark.path(side: rect.width).fill()
+            return true
+        }
+        image.isTemplate = color == nil
+        image.accessibilityDescription = "Convmog"
+        return image
+    }
 }
 
 // MARK: - Motion (Apple's damping-ratio + response springs, mapped to Core Animation)
