@@ -1,0 +1,18 @@
+# Compiles Convmog on a real Mac and runs its self-test, so a broken build never reaches the install line.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and self-test
+        run: ./build.sh --check
+      - name: Installer script parses
+        run: bash -n install.sh
