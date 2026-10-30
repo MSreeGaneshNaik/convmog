@@ -11,6 +11,13 @@ struct ConvmogError: LocalizedError {
     var errorDescription: String? { message }
 }
 
+/// A batch where some files worked: what was made, and what went wrong with the first one that didn't.
+struct PartialFailure: LocalizedError {
+    let made: [URL]
+    let message: String
+    var errorDescription: String? { message }
+}
+
 /// Every conversion runs locally: ImageIO, PDFKit, AVFoundation and the tools macOS ships
 /// (afconvert, textutil, ditto, tar). ffmpeg is used only when it's installed.
 enum Engine {
@@ -147,10 +154,12 @@ enum Engine {
         }
     }
 
-    static func canvas(_ w: Int, _ h: Int, like image: CGImage? = nil) throws -> CGContext {
+    /// A drawing surface. It has an alpha channel only when the picture it's for does, unless `opaque` forces none.
+    static func canvas(_ w: Int, _ h: Int, like image: CGImage? = nil, opaque: Bool = false) throws -> CGContext {
         let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
         let preferred = image?.colorSpace?.model == .rgb ? (image?.colorSpace ?? srgb) : srgb
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+        let alpha = !opaque && (image.map(hasAlpha) ?? true)
+        let info = (alpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast).rawValue
         let ctx = CGContext(data: nil, width: max(w, 1), height: max(h, 1), bitsPerComponent: 8, bytesPerRow: 0, space: preferred, bitmapInfo: info)
             ?? CGContext(data: nil, width: max(w, 1), height: max(h, 1), bitsPerComponent: 8, bytesPerRow: 0, space: srgb, bitmapInfo: info)
         guard let c = ctx else { throw ConvmogError("Not enough memory for that image") }
@@ -165,8 +174,26 @@ enum Engine {
         }
     }
 
+    /// Whether the file itself has transparency. JPEG and camera RAW never do; anything unknown counts as yes,
+    /// so transparency is never thrown away. A canvas or a filter adds an alpha channel even to a RAW photo,
+    /// so format choices look here, not at the processed pixels.
+    static func sourceHasAlpha(_ url: URL) -> Bool {
+        if let s = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let p = CGImageSourceCopyPropertiesAtIndex(s, 0, nil) as? [CFString: Any],
+           let a = p[kCGImagePropertyHasAlpha] as? Bool { return a }
+        guard let t = UTType(filenameExtension: Catalog.ext(url)) else { return true }
+        return !(t.conforms(to: .jpeg) || t.conforms(to: .rawImage))
+    }
+
+    /// Image tools read one frame, so on an animated GIF they'd quietly return a still. Say so instead.
+    static func refuseAnimated(_ src: URL) throws {
+        guard Catalog.ext(src) == "gif", let s = CGImageSourceCreateWithURL(src as CFURL, nil),
+              CGImageSourceGetCount(s) > 1 else { return }
+        throw ConvmogError("Animated GIFs aren't supported by this tool — try WEBP, which keeps the animation")
+    }
+
     static func flatten(_ image: CGImage) throws -> CGImage {
-        let ctx = try canvas(image.width, image.height, like: image)
+        let ctx = try canvas(image.width, image.height, like: image, opaque: true)
         let r = CGRect(x: 0, y: 0, width: image.width, height: image.height)
         ctx.setFillColor(CGColor(gray: 1, alpha: 1))
         ctx.fill(r)
@@ -189,16 +216,18 @@ enum Engine {
 
     /// Saves in the source's own format when this Mac can write it, otherwise PNG (alpha) or JPG.
     static func saveSame(_ image: CGImage, like src: URL, suffix: String, quality: Double = 0.9, keepMeta: Bool = true) throws -> URL {
+        try refuseAnimated(src)
         let e = Catalog.ext(src)
+        let alpha = hasAlpha(image) && sourceHasAlpha(src)
         var uti = "public.jpeg", ext = "jpg"
         if let t = UTType(filenameExtension: e), Catalog.writableImages.contains(t.identifier), !["ico", "icns", "gif"].contains(e) {
             uti = t.identifier
             ext = e
-        } else if hasAlpha(image) {
+        } else if alpha {
             uti = "public.png"
             ext = "png"
         }
-        let pixels = try (uti == "public.jpeg" && hasAlpha(image) ? flatten(image) : image)
+        let pixels = try (uti == "public.jpeg" && alpha ? flatten(image) : image)
         let out = output(src, ext: ext, suffix: suffix)
         return try producing(out) {
             try writeImage(pixels, to: out, uti: uti, quality: quality, props: keepMeta ? metadata(src) : [:])
@@ -220,14 +249,16 @@ enum Engine {
     }
 
     static func compressImage(_ src: URL) throws -> URL {
+        try refuseAnimated(src)
         let image = try loadImage(src)
+        let alpha = hasAlpha(image) && sourceHasAlpha(src)
         // Transparent art keeps its alpha in HEIC; everything else becomes a lean JPG (or stays HEIC).
-        if hasAlpha(image), Catalog.writableImages.contains("public.heic") {
+        if alpha, Catalog.writableImages.contains("public.heic") {
             let out = output(src, ext: "heic", suffix: "-small")
             return try producing(out) { try writeImage(image, to: out, uti: "public.heic", quality: 0.6, props: metadata(src)) }
         }
         let isHEIC = Catalog.canon(Catalog.ext(src)) == "heic"
-        let pixels = try (hasAlpha(image) ? flatten(image) : image)
+        let pixels = try (alpha ? flatten(image) : image)
         let out = output(src, ext: isHEIC ? "heic" : "jpg", suffix: "-small")
         return try producing(out) {
             try writeImage(pixels, to: out, uti: isHEIC ? "public.heic" : "public.jpeg", quality: isHEIC ? 0.55 : 0.7, props: metadata(src))
@@ -240,9 +271,12 @@ enum Engine {
         return try saveSame(loadImage(src, maxPixel: side), like: src, suffix: "-half")
     }
 
-    static func resizeImage(_ src: URL, maxSide: Int) throws -> URL {
-        let longest = pixelSize(src).map { max($0.0, $0.1) } ?? maxSide
-        return try saveSame(loadImage(src, maxPixel: min(longest, maxSide)), like: src, suffix: "-1080p")
+    /// Fits inside long × short (1920 × 1080 for 1080p), whichever way the photo is turned; never enlarges.
+    static func resizeImage(_ src: URL, fitting long: Int, _ short: Int) throws -> URL {
+        guard let size = pixelSize(src) else { throw ConvmogError("Can't read \(src.lastPathComponent)") }
+        let longest = Double(max(size.0, size.1)), shortest = Double(min(size.0, size.1))
+        let k = min(1, Double(long) / longest, Double(short) / shortest)
+        return try saveSame(loadImage(src, maxPixel: max(1, Int((longest * k).rounded()))), like: src, suffix: "-1080p")
     }
 
     static func squareImage(_ src: URL) throws -> URL {
@@ -329,6 +363,7 @@ enum Engine {
             size = turned ? CGSize(width: box.height, height: box.width) : box.size
             unit = "pt"
         default:
+            try refuseAnimated(src)
             image = try loadImage(src, maxPixel: 1600)
             let full = pixelSize(src) ?? (image.width, image.height)
             size = CGSize(width: full.0, height: full.1)
@@ -454,13 +489,18 @@ enum Engine {
                     if let page = source.page(at: i)?.copy() as? PDFPage { doc.insert(page, at: doc.pageCount) }
                 }
             } else {
-                let image = try loadImage(u)
-                let w = CGFloat(image.width), h = CGFloat(image.height)
-                let k = min(1, 842 / max(w, h))   // longest side fits an A4 page, pixels stay full-res
-                guard let page = PDFPage(image: NSImage(cgImage: image, size: NSSize(width: w * k, height: h * k))) else {
-                    throw ConvmogError("Couldn't place \(u.lastPathComponent)")
+                // Each page holds its bitmap until the PDF is written, so decode only what an A4 page at 300 dpi
+                // can show (3508px on the long side). 30 photos at 48 MP would otherwise sit in memory at ~5.8 GB.
+                try autoreleasepool {
+                    let longest = pixelSize(u).map { max($0.0, $0.1) } ?? 3508
+                    let image = try loadImage(u, maxPixel: min(longest, 3508))
+                    let w = CGFloat(image.width), h = CGFloat(image.height)
+                    let k = min(1, 842 / max(w, h))   // longest side fits an A4 page in points
+                    guard let page = PDFPage(image: NSImage(cgImage: image, size: NSSize(width: w * k, height: h * k))) else {
+                        throw ConvmogError("Couldn't place \(u.lastPathComponent)")
+                    }
+                    doc.insert(page, at: doc.pageCount)
                 }
-                doc.insert(page, at: doc.pageCount)
             }
         }
         guard doc.pageCount > 0 else { throw ConvmogError("Nothing to put in the PDF") }
@@ -478,12 +518,14 @@ enum Engine {
         }
         let dir = try folder(src, suffix: " pages")
         let base = src.deletingPathExtension().lastPathComponent
-        for i in 0..<doc.pageCount {
-            guard let page = doc.page(at: i) else { continue }
-            let file = dir.appendingPathComponent("\(base) \(pad(i + 1, doc.pageCount))").appendingPathExtension(ext)
-            try writeImage(render(page), to: file, uti: uti, quality: 0.9)
+        // A failure part-way removes the whole folder, so no half-finished set of pages is left behind.
+        return try producing(dir) {
+            for i in 0..<doc.pageCount {
+                guard let page = doc.page(at: i) else { continue }
+                let file = dir.appendingPathComponent("\(base) \(pad(i + 1, doc.pageCount))").appendingPathExtension(ext)
+                try autoreleasepool { try writeImage(render(page), to: file, uti: uti, quality: 0.9) }
+            }
         }
-        return dir
     }
 
     static func pdfToText(_ src: URL) throws -> URL {
@@ -526,13 +568,16 @@ enum Engine {
         guard doc.pageCount > 1 else { throw ConvmogError("Only one page — nothing to split") }
         let dir = try folder(src, suffix: " pages")
         let base = src.deletingPathExtension().lastPathComponent
-        for i in 0..<doc.pageCount {
-            guard let page = doc.page(at: i)?.copy() as? PDFPage else { continue }
-            let single = PDFDocument()
-            single.insert(page, at: 0)
-            _ = try writePDF(single, to: dir.appendingPathComponent("\(base) \(pad(i + 1, doc.pageCount))").appendingPathExtension("pdf"))
+        return try producing(dir) {
+            for i in 0..<doc.pageCount {
+                guard let page = doc.page(at: i)?.copy() as? PDFPage else { continue }
+                try autoreleasepool {
+                    let single = PDFDocument()
+                    single.insert(page, at: 0)
+                    _ = try writePDF(single, to: dir.appendingPathComponent("\(base) \(pad(i + 1, doc.pageCount))").appendingPathExtension("pdf"))
+                }
+            }
         }
-        return dir
     }
 
     static func rotatePDF(_ src: URL) throws -> URL {
@@ -684,12 +729,20 @@ enum Engine {
         let videoTrack = video ? comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) : nil
         let audioTrack = comp.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
         var cursor = CMTime.zero
-        for (i, u) in urls.enumerated() {
+        var shape: (size: CGSize, turn: CGAffineTransform)?
+        for u in urls {
             let asset = AVURLAsset(url: u)
             let span = CMTimeRange(start: .zero, duration: asset.duration)
             if let vt = videoTrack, let v = asset.tracks(withMediaType: .video).first {
+                // One track has one size and one rotation, so a portrait clip joined to a landscape one would come out sideways.
+                if let first = shape, first.size != v.naturalSize || first.turn != v.preferredTransform {
+                    throw ConvmogError("Join needs clips with the same size and orientation — \(u.lastPathComponent) differs")
+                }
+                if shape == nil {
+                    shape = (v.naturalSize, v.preferredTransform)
+                    vt.preferredTransform = v.preferredTransform
+                }
                 try vt.insertTimeRange(span, of: v, at: cursor)
-                if i == 0 { vt.preferredTransform = v.preferredTransform }
             }
             if let at = audioTrack, let a = asset.tracks(withMediaType: .audio).first {
                 try at.insertTimeRange(span, of: a, at: cursor)
@@ -708,6 +761,7 @@ enum Engine {
         let length = min(seconds(asset), 30)
         guard length > 0 else { throw ConvmogError("Couldn't read the audio") }
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
+        defer { try? FileManager.default.removeItem(at: temp) }   // gone once moved; still there if anything failed
         try export(asset, preset: AVAssetExportPresetAppleM4A, to: temp, type: .m4a,
                    range: CMTimeRange(start: .zero, duration: CMTime(seconds: length, preferredTimescale: 600)))
         let out = output(src, ext: "m4r")
@@ -722,12 +776,18 @@ enum Engine {
 
     // MARK: - ffmpeg (optional)
 
+    /// H.264 needs an even width and height, so odd sizes (a 1365×767 window recording) round down by a pixel.
+    static let evenSize = ["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"]
+    /// The one H.264 recipe every re-encode shares; the quality options follow it.
+    static let x264 = evenSize + ["-c:v", "libx264", "-pix_fmt", "yuv420p"]
+
     static let ffArgs: [String: [String]] = [
-        "mp4": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"],
-        "mov": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k"],
+        "mp4": x264 + ["-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"],
+        "mov": x264 + ["-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-b:a", "192k"],
         "webm": ["-c:v", "libvpx-vp9", "-crf", "33", "-b:v", "0", "-row-mt", "1", "-c:a", "libopus", "-b:a", "128k"],
-        "mkv": ["-map", "0", "-c", "copy"],
-        "avi": ["-c:v", "mpeg4", "-q:v", "4", "-c:a", "libmp3lame", "-q:a", "3"],
+        // Every audio, video and subtitle stream, but not the data tracks iPhones and cameras add: MKV can't hold them.
+        "mkv": ["-map", "0", "-map", "-0:d", "-c", "copy"],
+        "avi": evenSize + ["-c:v", "mpeg4", "-q:v", "4", "-c:a", "libmp3lame", "-q:a", "3"],
         "gif": ["-t", "8", "-vf", "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse", "-loop", "0"],
         "mp3": ["-vn", "-c:a", "libmp3lame", "-q:a", "2"],
         "m4a": ["-vn", "-c:a", "aac", "-b:a", "192k"],
@@ -751,7 +811,8 @@ enum Engine {
         let e = Catalog.canon(Catalog.ext(src))
         let target = ffArgs[e] != nil ? e : "m4a"
         return try ff(src, ext: target, suffix: "-loud",
-                      args: ["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] + (ffArgs[target] ?? []))
+                      // loudnorm works at 192 kHz internally; without -ar the file comes out at that rate, 4× the size.
+                      args: ["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] + (ffArgs[target] ?? []) + ["-ar", "48000"])
     }
 
     // MARK: - Documents (textutil + Cocoa text system)
@@ -906,12 +967,6 @@ enum Engine {
 
     static func extract(_ src: URL) throws -> URL {
         let dir = try folder(src, suffix: "")
-        do {
-            try run("/usr/bin/tar", ["-xf", src.path, "-C", dir.path])
-        } catch {
-            try? FileManager.default.removeItem(at: dir)
-            throw error
-        }
-        return dir
+        return try producing(dir) { try run("/usr/bin/tar", ["-xf", src.path, "-C", dir.path]) }
     }
 }

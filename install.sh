@@ -93,68 +93,74 @@ card_current() {
   printf '    %s╰──────────────────────────────────────────────╯%s\n\n' "$D" "$N"
 }
 
-banner
+# Everything runs from main, so bash has read the whole script before any of it runs:
+# a download cut off half-way does nothing instead of running half an installer.
+main() {
+  banner
 
-step "Checking this Mac"
-[ "$(uname -s)" = "Darwin" ] || die "Convmog is a Mac app — run this on macOS."
-version="$(sw_vers -productVersion)"
-[ "${version%%.*}" -ge 13 ] || die "Convmog needs macOS 13 Ventura or later (this Mac has ${version})."
-ok "macOS ${version} on $(uname -m). Convmog needs macOS 13 or later."
+  step "Checking this Mac"
+  [ "$(uname -s)" = "Darwin" ] || die "Convmog is a Mac app — run this on macOS."
+  version="$(sw_vers -productVersion)"
+  [ "${version%%.*}" -ge 13 ] || die "Convmog needs macOS 13 Ventura or later (this Mac has ${version})."
+  ok "macOS ${version} on $(uname -m). Convmog needs macOS 13 or later."
 
-step "Looking for the latest version on GitHub"
-why "So a Mac that already has Convmog only rebuilds when something changed."
-# The newest commit as a bare SHA. Offline or rate-limited → empty, and we simply reinstall.
-latest="$(curl -fsSL -H 'Accept: application/vnd.github.sha' "https://api.github.com/repos/${REPO}/commits/${BRANCH}" 2>/dev/null || true)"
-[[ "$latest" =~ ^[0-9a-f]{40}$ ]] || latest=""
-installed="$(defaults read "${APP}/Contents/Info" ConvmogCommit 2>/dev/null || true)"
-short="${latest:0:7}"
-had_app=0
-[ -d "$APP" ] && had_app=1
+  step "Looking for the latest version on GitHub"
+  why "So a Mac that already has Convmog only rebuilds when something changed."
+  # The newest commit as a bare SHA. Offline or rate-limited → empty, and we simply reinstall.
+  latest="$(curl -fsSL -H 'Accept: application/vnd.github.sha' "https://api.github.com/repos/${REPO}/commits/${BRANCH}" 2>/dev/null || true)"
+  [[ "$latest" =~ ^[0-9a-f]{40}$ ]] || latest=""
+  installed="$(defaults read "${APP}/Contents/Info" ConvmogCommit 2>/dev/null || true)"
+  short="${latest:0:7}"
+  had_app=0
+  [ -d "$APP" ] && had_app=1
 
-if [ -z "$latest" ]; then
-  why "GitHub didn't answer (offline or busy), so this does a full install of the newest code."
-elif [ "$had_app" = 0 ]; then
-  ok "Latest is ${short}. Convmog isn't installed yet, so it will be downloaded and built."
-elif [ "$installed" = "$latest" ] && [ "${CONVMOG_FORCE:-0}" != "1" ]; then
-  ok "You already have ${short}, the latest."
-  if ! pgrep -x Convmog >/dev/null; then
-    why "It wasn't running, so it's opening now."
-    open "$APP"
+  if [ -z "$latest" ]; then
+    why "GitHub didn't answer (offline or busy), so this does a full install of the newest code."
+  elif [ "$had_app" = 0 ]; then
+    ok "Latest is ${short}. Convmog isn't installed yet, so it will be downloaded and built."
+  elif [ "$installed" = "$latest" ] && [ "${CONVMOG_FORCE:-0}" != "1" ]; then
+    ok "You already have ${short}, the latest."
+    if ! pgrep -x Convmog >/dev/null; then
+      why "It wasn't running, so it's opening now."
+      open "$APP"
+    fi
+    card_current
+    exit 0
+  elif [ "$installed" = "$latest" ]; then
+    ok "You already have ${short}, but CONVMOG_FORCE=1 asks for a rebuild anyway."
+  elif [ -n "$installed" ]; then
+    ok "You have ${installed:0:7}, the latest is ${short}, so it will be updated."
+  else
+    ok "You have an older Convmog without a version stamp, so it will be updated to ${short}."
   fi
-  card_current
-  exit 0
-elif [ "$installed" = "$latest" ]; then
-  ok "You already have ${short}, but CONVMOG_FORCE=1 asks for a rebuild anyway."
-elif [ -n "$installed" ]; then
-  ok "You have ${installed:0:7}, the latest is ${short}, so it will be updated."
-else
-  ok "You have an older Convmog without a version stamp, so it will be updated to ${short}."
-fi
 
-step "Checking for Apple's Swift compiler"
-why "Convmog is built from its source on your Mac, so no prebuilt app is downloaded."
-if ! xcrun --find swiftc >/dev/null 2>&1; then
-  why "It needs Apple's free Command Line Tools, which aren't installed. Opening Apple's installer…"
-  xcode-select --install >/dev/null 2>&1 || true
-  die "Finish the install in the window that just opened, then paste the same command again."
-fi
-swift_version="$(xcrun swiftc --version 2>&1 | grep -o 'Apple Swift version [0-9.]*' | head -1 || true)"
-[ -n "$swift_version" ] || swift_version="Apple Swift"
-ok "Found ${swift_version}"
+  step "Checking for Apple's Swift compiler"
+  why "Convmog is built from its source on your Mac, so no prebuilt app is downloaded."
+  if ! xcrun --find swiftc >/dev/null 2>&1; then
+    why "It needs Apple's free Command Line Tools, which aren't installed. Opening Apple's installer…"
+    xcode-select --install >/dev/null 2>&1 || true
+    die "Finish the install in the window that just opened, then paste the same command again."
+  fi
+  swift_version="$(xcrun swiftc --version 2>&1 | grep -o 'Apple Swift version [0-9.]*' | head -1 || true)"
+  [ -n "$swift_version" ] || swift_version="Apple Swift"
+  ok "Found ${swift_version}"
 
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
-tag=""
-[ -n "$short" ] && tag=" ${short}"
+  TMP="$(mktemp -d)"
+  trap 'rm -rf "$TMP"' EXIT
+  tag=""
+  [ -n "$short" ] && tag=" ${short}"
 
-step "Downloading the source${tag}"
-why "From github.com/${REPO}, into a temporary folder that is deleted when this finishes."
-# Download exactly the commit we just checked, so the stamp in the app matches what was built.
-url="https://codeload.github.com/${REPO}/tar.gz/${latest:-refs/heads/${BRANCH}}"
-bar 3 bash -c 'set -o pipefail; curl -fsSL "$1" | tar -xz -C "$2"' _ "$url" "$TMP" \
-  || die "Couldn't download from GitHub. Check your connection and try again."
+  step "Downloading the source${tag}"
+  why "From github.com/${REPO}, into a temporary folder that is deleted when this finishes."
+  # Download exactly the commit we just checked, so the stamp in the app matches what was built.
+  url="https://codeload.github.com/${REPO}/tar.gz/${latest:-refs/heads/${BRANCH}}"
+  bar 3 bash -c 'set -o pipefail; curl -fsSL "$1" | tar -xz -C "$2"' _ "$url" "$TMP" \
+    || die "Couldn't download from GitHub. Check your connection and try again."
 
-cd "$TMP"/convmog-*
-CONVMOG_STEP="$STEP" CONVMOG_TOTAL="$TOTAL" CONVMOG_COMMIT="$latest" ./build.sh --install
+  cd "$TMP"/convmog-*
+  CONVMOG_STEP="$STEP" CONVMOG_TOTAL="$TOTAL" CONVMOG_COMMIT="$latest" ./build.sh --install
 
-if [ "$had_app" = 1 ]; then card_updated; else card_installed; fi
+  if [ "$had_app" = 1 ]; then card_updated; else card_installed; fi
+}
+
+main "$@"
