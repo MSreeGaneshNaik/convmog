@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-label="Morph demo: a photo is dragged out of Finder, shift is held, a white glass wheel of formats appears around the cursor, the HEIC wedge lights up, and photo.heic appears next to the original.">
+<style>
+  .a { transform-box: view-box; animation-duration: 8s; animation-iteration-count: infinite; animation-fill-mode: both; }
+  .cursor { animation-name: cursor; transform: translate(1023px, 223px); }
+  .cursorfade { animation-name: cursorfade; }
+  .ghost { animation-name: ghost; opacity: .62; }
+  .key { animation-name: key; transform: translateY(3px); }
+  .key .keyface { animation: keyface 8s infinite both; fill: #E4E2DD; }
+  .wheelg { animation-name: bloom; transform-origin: 904px 300px; }
+  .lift { animation-name: lift; transform: scale(1.06); }
+  .liton { animation-name: liton; }
+  .litoff { animation-name: litoff; opacity: 0; }
+  .pill { animation-name: pill; opacity: 0; }
+  .newfile { animation-name: newfile; opacity: 0; }
+  @keyframes cursor {
+    0%, 7.5% { transform: translate(472px, 212px); animation-timing-function: cubic-bezier(.45,0,.25,1); }
+    25%, 32.5% { transform: translate(904px, 300px); animation-timing-function: cubic-bezier(.3,0,.2,1); }
+    40%, 88% { transform: translate(1023px, 223px); }
+    89%, 100% { transform: translate(472px, 212px); }
+  }
+  @keyframes cursorfade { 0%, 85% { opacity: 1; } 87.5%, 92% { opacity: 0; } 96%, 100% { opacity: 1; } }
+  @keyframes ghost { 0%, 7.5% { opacity: 0; } 9%, 51% { opacity: .62; } 52.5%, 100% { opacity: 0; } }
+  @keyframes key { 0%, 24.5% { transform: translateY(0); } 25.5%, 51% { transform: translateY(3px); } 52.5%, 100% { transform: translateY(0); } }
+  @keyframes keyface { 0%, 24.5% { fill: #FFFFFF; } 25.5%, 51% { fill: #E4E2DD; } 52.5%, 100% { fill: #FFFFFF; } }
+  @keyframes bloom {
+    0%, 25.5% { opacity: 0; transform: scale(.82); animation-timing-function: cubic-bezier(.2,.9,.25,1); }
+    31.5%, 51.25% { opacity: 1; transform: scale(1); animation-timing-function: cubic-bezier(.4,0,1,1); }
+    54.5% { opacity: 0; transform: scale(1); }
+    100% { opacity: 0; transform: scale(.82); }
+  }
+  @keyframes lift {
+    0%, 39.5% { transform: scale(1); animation-timing-function: cubic-bezier(.2,.9,.25,1); }
+    42.5%, 51.25% { transform: scale(1.06); animation-timing-function: cubic-bezier(.2,.9,.25,1); }
+    54% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  @keyframes liton { 0%, 39.5% { opacity: 0; } 41%, 100% { opacity: 1; } }
+  @keyframes litoff { 0%, 39.5% { opacity: 1; } 41%, 100% { opacity: 0; } }
+  @keyframes pill {
+    0%, 55% { opacity: 0; transform: translateY(16px); animation-timing-function: cubic-bezier(.16,1,.3,1); }
+    61%, 84.5% { opacity: 1; transform: translateY(0); animation-timing-function: cubic-bezier(.4,0,1,1); }
+    88%, 100% { opacity: 0; transform: translateY(16px); }
+  }
+  @keyframes newfile {
+    0%, 57% { opacity: 0; transform: scale(.88); animation-timing-function: cubic-bezier(.2,.9,.25,1); }
+    61%, 86% { opacity: 1; transform: scale(1); }
+    90%, 100% { opacity: 0; transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) { .a, .key .keyface { animation: none !important; } }
+</style>
+<defs>
+  <filter id="frost" x="-10%" y="-10%" width="120%" height="120%">
+    <feGaussianBlur stdDeviation="18"/><feColorMatrix type="saturate" values="1.8"/></filter>
+  <filter id="frostsm" x="-10%" y="-10%" width="120%" height="120%">
+    <feGaussianBlur stdDeviation="10"/><feColorMatrix type="saturate" values="1.6"/></filter>
+  <filter id="float" x="-30%" y="-30%" width="160%" height="170%">
+    <feDropShadow dx="0" dy="26" stdDeviation="30" flood-color="#0B2233" flood-opacity=".26" result="a"/>
+    <feDropShadow in="a" dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity=".14"/></filter>
+  <filter id="floatsm" x="-30%" y="-40%" width="160%" height="200%">
+    <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0B2233" flood-opacity=".2" result="a"/>
+    <feDropShadow in="a" dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".12"/></filter>
+  <filter id="liftshadow" x="-40%" y="-40%" width="180%" height="190%">
+    <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#5A2A00" flood-opacity=".32"/></filter>
+  <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFF" stop-opacity=".62"/><stop offset=".5" stop-color="#FFF" stop-opacity="0"/></linearGradient>
+  <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset=".6" stop-color="#0B2233" stop-opacity="0"/><stop offset="1" stop-color="#0B2233" stop-opacity=".09"/></linearGradient>
+  <linearGradient id="rimlight" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFF" stop-opacity="1"/><stop offset=".55" stop-color="#FFF" stop-opacity=".25"/>
+    <stop offset="1" stop-color="#FFF" stop-opacity=".7"/></linearGradient>
+  <linearGradient id="wedgesheen" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFF" stop-opacity=".45"/><stop offset=".6" stop-color="#FFF" stop-opacity="0"/></linearGradient>
+  <filter id="winshadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity=".14"/></filter>
+</defs>
+<g id="scene">
+<rect width="1280" height="680" fill="#F2F1EE"/>
+<g filter="url(#winshadow)">
+  <clipPath id="fwin"><rect x="56" y="80" width="480" height="420" rx="12"/></clipPath>
+  <g clip-path="url(#fwin)"><rect x="56" y="80" width="480" height="420" fill="#FFFFFF"/>
+    <rect x="56" y="80" width="480" height="52" fill="#F5F5F3"/></g>
+  <rect x="56.5" y="80.5" width="479" height="419" rx="11.5" fill="none" stroke="rgba(0,0,0,.08)"/>
+</g>
+<circle cx="78" cy="106" r="6.5" fill="#FF5F57"/><circle cx="98" cy="106" r="6.5" fill="#FEBC2E"/>
+<circle cx="118" cy="106" r="6.5" fill="#28C840"/>
+<text x="296.0" y="106.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >Downloads</text>
+<path d="M105.0,168 a4,4 0 0 1 4,-4 H147.0 L163.0,180 V234 a4,4 0 0 1 -4,4 H109.0 a4,4 0 0 1 -4,-4 Z" fill="#FFF" stroke="#D9D6D0"/><path d="M147.0,164 V177 a3,3 0 0 0 3,3 H163.0" fill="#F1EFEB" stroke="#D9D6D0"/><rect x="111.0" y="212" width="46" height="17" rx="3" fill="#1F9E9E"/><text x="134.0" y="220.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="800" fill="#FFF" text-anchor="middle" dominant-baseline="central" letter-spacing="0.4">MOV</text><text x="134.0" y="262.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >clip.mov</text><path d="M215.0,168 a4,4 0 0 1 4,-4 H257.0 L273.0,180 V234 a4,4 0 0 1 -4,4 H219.0 a4,4 0 0 1 -4,-4 Z" fill="#FFF" stroke="#D9D6D0"/><path d="M257.0,164 V177 a3,3 0 0 0 3,3 H273.0" fill="#F1EFEB" stroke="#D9D6D0"/><rect x="221.0" y="212" width="46" height="17" rx="3" fill="#8A7A66"/><text x="244.0" y="220.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="800" fill="#FFF" text-anchor="middle" dominant-baseline="central" letter-spacing="0.4">ZIP</text><text x="244.0" y="262.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >deck.zip</text><path d="M325.0,168 a4,4 0 0 1 4,-4 H367.0 L383.0,180 V234 a4,4 0 0 1 -4,4 H329.0 a4,4 0 0 1 -4,-4 Z" fill="#FFF" stroke="#D9D6D0"/><path d="M367.0,164 V177 a3,3 0 0 0 3,3 H383.0" fill="#F1EFEB" stroke="#D9D6D0"/><rect x="331.0" y="212" width="46" height="17" rx="3" fill="#6B7280"/><text x="354.0" y="220.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="800" fill="#FFF" text-anchor="middle" dominant-baseline="central" letter-spacing="0.4">MD</text><text x="354.0" y="262.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >notes.md</text><clipPath id="ph"><rect x="426" y="178" width="76" height="56" rx="5"/></clipPath>
+<g clip-path="url(#ph)">
+  <rect x="426" y="178" width="76" height="56" fill="#8FC2E6"/>
+  <rect x="426" y="203.2" width="76" height="30.800000000000004" fill="#B7D9EE"/>
+  <circle cx="482.24" cy="194.8" r="7.28" fill="#FFCF6B"/>
+  <path d="M426,218.32 Q445.0,200.4 465.52,214.96 T502,209.36 V234 H426 Z" fill="#6FA37C"/>
+  <path d="M426,225.04 Q456.4,210.48 485.28,222.8 T502,220.56 V234 H426 Z" fill="#3F7D5A"/>
+  <path d="M426,231.2 Q467.8,221.68 502,230.08 V234 H426 Z" fill="#2B5A41"/>
+</g><rect x="418" y="250" width="92" height="24" rx="6" fill="#2F6FEB"/><text x="464.0" y="262.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFF" text-anchor="middle" dominant-baseline="central" >photo.png</text><path d="M105.0,318 a4,4 0 0 1 4,-4 H147.0 L163.0,330 V384 a4,4 0 0 1 -4,4 H109.0 a4,4 0 0 1 -4,-4 Z" fill="#FFF" stroke="#D9D6D0"/><path d="M147.0,314 V327 a3,3 0 0 0 3,3 H163.0" fill="#F1EFEB" stroke="#D9D6D0"/><rect x="111.0" y="362" width="46" height="17" rx="3" fill="#E5484D"/><text x="134.0" y="370.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="800" fill="#FFF" text-anchor="middle" dominant-baseline="central" letter-spacing="0.4">PDF</text><text x="134.0" y="412.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >report.pdf</text><path d="M215.0,318 a4,4 0 0 1 4,-4 H257.0 L273.0,330 V384 a4,4 0 0 1 -4,4 H219.0 a4,4 0 0 1 -4,-4 Z" fill="#FFF" stroke="#D9D6D0"/><path d="M257.0,314 V327 a3,3 0 0 0 3,3 H273.0" fill="#F1EFEB" stroke="#D9D6D0"/><rect x="221.0" y="362" width="46" height="17" rx="3" fill="#2FA36B"/><text x="244.0" y="370.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="800" fill="#FFF" text-anchor="middle" dominant-baseline="central" letter-spacing="0.4">WAV</text><text x="244.0" y="412.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="500" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >song.wav</text>
+<g class="a newfile" style="transform-origin:354px 359px"><clipPath id="ph2"><rect x="316" y="328" width="76" height="56" rx="5"/></clipPath>
+<g clip-path="url(#ph2)">
+  <rect x="316" y="328" width="76" height="56" fill="#8FC2E6"/>
+  <rect x="316" y="353.2" width="76" height="30.800000000000004" fill="#B7D9EE"/>
+  <circle cx="372.24" cy="344.8" r="7.28" fill="#FFCF6B"/>
+  <path d="M316,368.32 Q335.0,350.4 355.52,364.96 T392,359.36 V384 H316 Z" fill="#6FA37C"/>
+  <path d="M316,375.04 Q346.4,360.48 375.28,372.8 T392,370.56 V384 H316 Z" fill="#3F7D5A"/>
+  <path d="M316,381.2 Q357.8,371.68 392,380.08 V384 H316 Z" fill="#2B5A41"/>
+</g><text x="354.0" y="412.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >photo.heic</text></g>
+<g filter="url(#winshadow)">
+  <clipPath id="pwin"><rect x="584" y="56" width="640" height="480" rx="12"/></clipPath>
+  <g clip-path="url(#pwin)"><rect x="584" y="56" width="640" height="480" fill="#FFFFFF"/><clipPath id="big"><rect x="584" y="108" width="640" height="428" rx="0"/></clipPath>
+<g clip-path="url(#big)">
+  <rect x="584" y="108" width="640" height="428" fill="#8FC2E6"/>
+  <rect x="584" y="300.6" width="640" height="235.4" fill="#B7D9EE"/>
+  <circle cx="1160.0" cy="193.60000000000002" r="55.64" fill="#FFCF6B"/>
+  <path d="M584,416.15999999999997 Q744.0,279.20000000000005 916.8,390.48 T1224,347.68000000000006 V536 H584 Z" fill="#6FA37C"/>
+  <path d="M584,467.52 Q840.0,356.24 1083.2,450.40000000000003 T1224,433.28000000000003 V536 H584 Z" fill="#3F7D5A"/>
+  <path d="M584,514.5999999999999 Q936.0,441.84000000000003 1224,506.04 V536 H584 Z" fill="#2B5A41"/>
+</g>
+    <rect x="584" y="56" width="640" height="52" fill="#F5F5F3"/></g>
+  <rect x="584.5" y="56.5" width="639" height="479" rx="11.5" fill="none" stroke="rgba(0,0,0,.08)"/>
+</g>
+<circle cx="606" cy="82" r="6.5" fill="#FF5F57"/><circle cx="626" cy="82" r="6.5" fill="#FEBC2E"/>
+<circle cx="646" cy="82" r="6.5" fill="#28C840"/>
+<text x="904.0" y="82.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >photo.png</text>
+</g>
+<g class="a wheelg"><circle cx="904" cy="300" r="192.07999999999998" fill="#FFF" filter="url(#float)"/>
+<clipPath id="disc-hero"><circle cx="904" cy="300" r="192.07999999999998"/></clipPath>
+<g clip-path="url(#disc-hero)"><use href="#scene" xlink:href="#scene" filter="url(#frost)"/></g>
+<circle cx="904" cy="300" r="192.07999999999998" fill="#FFF" opacity=".46"/>
+<circle cx="904" cy="300" r="192.07999999999998" fill="url(#sheen)"/>
+<circle cx="904" cy="300" r="192.07999999999998" fill="url(#shade)"/>
+<circle cx="904" cy="300" r="185.07999999999998" fill="none" stroke="#FFF" stroke-opacity=".28"/>
+<circle cx="904" cy="300" r="190.88" fill="none" stroke="url(#rimlight)" stroke-width="2.2"/>
+<circle cx="904" cy="300" r="192.57999999999998" fill="none" stroke="#0B2233" stroke-opacity=".1"/>
+<path d="M843.43,144.80 A166.6,166.6 0 0 1 964.57,144.80 L926.30,237.20 A66.63999999999999,66.63999999999999 0 0 0 881.70,237.20 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="904.0" y="175.5" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >JPG</text><text x="904.0" y="196.1" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Photo</text>
+<g class="a lift" style="transform-origin:904px 300px"><path d="M970.91,147.43 A166.6,166.6 0 0 1 1056.57,233.09 L964.17,271.36 A66.63999999999999,66.63999999999999 0 0 0 932.64,239.83 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><g class="a liton"><path d="M970.91,147.43 A166.6,166.6 0 0 1 1056.57,233.09 L964.17,271.36 A66.63999999999999,66.63999999999999 0 0 0 932.64,239.83 Z" fill="#FF8A1F" stroke="#FF8A1F" stroke-width="3.92" stroke-linejoin="round" filter="url(#liftshadow)"/><path d="M970.91,147.43 A166.6,166.6 0 0 1 1056.57,233.09 L964.17,271.36 A66.63999999999999,66.63999999999999 0 0 0 932.64,239.83 Z" fill="url(#wedgesheen)" stroke="none"/></g><g class="a litoff"><text x="986.5" y="209.7" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >HEIC</text><text x="986.5" y="230.3" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Tiny</text></g><g class="a liton"><text x="986.5" y="209.7" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1A1206" text-anchor="middle" dominant-baseline="central" >HEIC</text><text x="986.5" y="230.3" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#1A1206" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Tiny</text></g></g>
+<path d="M1059.20,239.43 A166.6,166.6 0 0 1 1059.20,360.57 L966.80,322.30 A66.63999999999999,66.63999999999999 0 0 0 966.80,277.70 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="1020.6" y="292.2" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >TIFF</text><text x="1020.6" y="312.7" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Print</text>
+<path d="M1056.57,366.91 A166.6,166.6 0 0 1 970.91,452.57 L932.64,360.17 A66.63999999999999,66.63999999999999 0 0 0 964.17,328.64 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="986.5" y="374.6" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >GIF</text><text x="986.5" y="395.2" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Classic</text>
+<path d="M964.57,455.20 A166.6,166.6 0 0 1 843.43,455.20 L881.70,362.80 A66.63999999999999,66.63999999999999 0 0 0 926.30,362.80 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="904.0" y="408.8" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >BMP</text><text x="904.0" y="429.4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Bitmap</text>
+<path d="M837.09,452.57 A166.6,166.6 0 0 1 751.43,366.91 L843.83,328.64 A66.63999999999999,66.63999999999999 0 0 0 875.36,360.17 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="821.5" y="374.6" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >ICO</text><text x="821.5" y="395.2" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Favicon</text>
+<path d="M748.80,360.57 A166.6,166.6 0 0 1 748.80,239.43 L841.20,277.70 A66.63999999999999,66.63999999999999 0 0 0 841.20,322.30 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="787.4" y="292.2" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >ICNS</text><text x="787.4" y="312.7" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Mac icon</text>
+<path d="M751.43,233.09 A166.6,166.6 0 0 1 837.09,147.43 L875.36,239.83 A66.63999999999999,66.63999999999999 0 0 0 843.83,271.36 Z" fill="#000" stroke="#000" stroke-width="3.92" stroke-linejoin="round" opacity=".06"/><text x="821.5" y="209.7" font-family="ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21.6" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >PDF</text><text x="821.5" y="230.3" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.2" font-weight="650" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" letter-spacing="0.2">Document</text>
+<circle cx="904" cy="300" r="52.92" fill="#FFF" fill-opacity=".5" filter="url(#floatsm)"/><circle cx="904" cy="300" r="52.92" fill="url(#sheen)"/><circle cx="904" cy="300" r="52.120000000000005" fill="none" stroke="url(#rimlight)" stroke-width="1.6"/>
+<clipPath id="hub-hero"><rect x="884.4" y="270.6" width="39.2" height="29.4" rx="4"/></clipPath>
+<g clip-path="url(#hub-hero)">
+  <rect x="884.4" y="270.6" width="39.2" height="29.4" fill="#8FC2E6"/>
+  <rect x="884.4" y="283.83000000000004" width="39.2" height="16.17" fill="#B7D9EE"/>
+  <circle cx="913.408" cy="279.42" r="3.822" fill="#FFCF6B"/>
+  <path d="M884.4,291.76800000000003 Q894.1999999999999,282.36 904.784,290.004 T923.6,287.064 V300.0 H884.4 Z" fill="#6FA37C"/>
+  <path d="M884.4,295.29600000000005 Q900.0799999999999,287.65200000000004 914.976,294.12 T923.6,292.944 V300.0 H884.4 Z" fill="#3F7D5A"/>
+  <path d="M884.4,298.53000000000003 Q905.96,293.53200000000004 923.6,297.942 V300.0 H884.4 Z" fill="#2B5A41"/>
+</g>
+<g class="a litoff"><text x="904.0" y="313.7" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.8" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >photo.png</text><text x="904.0" y="329.4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.8" font-weight="600" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" >Hold ⌥ for tools</text></g><g class="a liton"><text x="904.0" y="313.7" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.8" font-weight="800" fill="#1D1D1F" text-anchor="middle" dominant-baseline="central" >To HEIC</text><text x="904.0" y="329.4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.8" font-weight="600" fill="#5E5E63" text-anchor="middle" dominant-baseline="central" >Release to apply</text></g></g>
+<g class="a pill">
+  <rect x="452" y="594" width="376" height="64" rx="17" fill="#FFF" fill-opacity=".78" filter="url(#floatsm)"/>
+  <rect x="452" y="594" width="376" height="64" rx="17" fill="url(#sheen)"/>
+  <rect x="453" y="595" width="374" height="62" rx="16" fill="none" stroke="url(#rimlight)" stroke-width="1.6"/>
+  <rect x="451.5" y="593.5" width="377" height="65" rx="17.5" fill="none" stroke="#0B2233" stroke-opacity=".1"/>
+  <circle cx="484" cy="626" r="12" fill="#2FA866"/>
+  <path d="M479,626 L482.8,630 L489.5,622" fill="none" stroke="#FFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="510.0" y="616.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#1D1D1F" text-anchor="start" dominant-baseline="central" >photo.heic</text>
+  <text x="510.0" y="638.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" font-weight="500" fill="#5E5E63" text-anchor="start" dominant-baseline="central" >4.2 MB → 1.1 MB  ·  −74%</text>
+</g>
+<g class="a key"><rect class="keyface" x="56" y="600" width="112" height="54" rx="9" fill="#FFFFFF" stroke="#CFCBC4"/>
+<text x="70.0" y="618.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#1D1D1F" text-anchor="start" dominant-baseline="central" >⇧</text><text x="156.0" y="640.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1D1D1F" text-anchor="end" dominant-baseline="central" >shift</text></g>
+<text x="188.0" y="627.0" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21" font-weight="600" fill="#1D1D1F" text-anchor="start" dominant-baseline="central" >Hold shift while you drag</text>
+<g class="a cursor"><g class="a cursorfade"><g class="a ghost"><clipPath id="gh"><rect x="10" y="20" width="52" height="39" rx="5"/></clipPath>
+<g clip-path="url(#gh)">
+  <rect x="10" y="20" width="52" height="39" fill="#8FC2E6"/>
+  <rect x="10" y="37.55" width="52" height="21.450000000000003" fill="#B7D9EE"/>
+  <circle cx="48.48" cy="31.7" r="5.07" fill="#FFCF6B"/>
+  <path d="M10,48.08 Q23.0,35.6 37.04,45.74 T62,41.84 V59 H10 Z" fill="#6FA37C"/>
+  <path d="M10,52.76 Q30.8,42.62 50.56,51.2 T62,49.64 V59 H10 Z" fill="#3F7D5A"/>
+  <path d="M10,57.05 Q38.6,50.42 62,56.27 V59 H10 Z" fill="#2B5A41"/>
+</g></g><path d="M0,0 L0,26 L6.5,19.8 L10.6,29.4 L15,27.5 L10.9,18.1 L19.6,18.1 Z" fill="#111" stroke="#FFF" stroke-width="1.8" stroke-linejoin="round"/></g></g>
+</svg>
