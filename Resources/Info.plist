@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>Morph</string>
+	<string>Convmog</string>
 	<key>CFBundleDisplayName</key>
-	<string>Morph</string>
+	<string>Convmog</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.boss.morph</string>
+	<string>com.boss.convmog</string>
 	<key>CFBundleExecutable</key>
-	<string>Morph</string>
+	<string>Convmog</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
@@ -25,14 +25,14 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSDesktopFolderUsageDescription</key>
-	<string>Morph saves converted files right next to the originals.</string>
+	<string>Convmog saves converted files right next to the originals.</string>
 	<key>NSDocumentsFolderUsageDescription</key>
-	<string>Morph saves converted files right next to the originals.</string>
+	<string>Convmog saves converted files right next to the originals.</string>
 	<key>NSDownloadsFolderUsageDescription</key>
-	<string>Morph saves converted files right next to the originals.</string>
+	<string>Convmog saves converted files right next to the originals.</string>
 	<key>NSRemovableVolumesUsageDescription</key>
-	<string>Morph saves converted files right next to the originals.</string>
+	<string>Convmog saves converted files right next to the originals.</string>
 	<key>NSNetworkVolumesUsageDescription</key>
-	<string>Morph saves converted files right next to the originals.</string>
+	<string>Convmog saves converted files right next to the originals.</string>
 </dict>
 </plist>

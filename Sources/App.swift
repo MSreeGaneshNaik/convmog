@@ -1,12 +1,12 @@
 import AppKit
 import ServiceManagement
 
-// Morph — hold Shift while dragging any file and a wheel of formats blooms around your cursor.
+// Convmog — hold Shift while dragging any file and a wheel of formats blooms around your cursor.
 // Release on a wedge: the converted file lands next to the original. Add Option for tools.
 
 @main
 @MainActor
-enum MorphMain {
+enum ConvmogMain {
     static func main() {
         if CommandLine.arguments.contains("--selftest") { exit(SelfTest.run() ? 0 : 1) }
         let app = NSApplication.shared
@@ -23,7 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let watcher: DragWatcher
     private let wheel: WheelController
     private let hud: HUD
-    private let work = DispatchQueue(label: "morph.work", qos: .userInitiated)
+    private let work = DispatchQueue(label: "convmog.work", qos: .userInitiated)
     private var lastOutputs: [URL] = []
     private var queue: [(id: Int, title: String, subtitle: String)] = []   // jobs not finished, in run order
     private var nextID = 0
@@ -44,9 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hud.onClick = { [weak self] in self?.revealLast() }
         watcher.start()
 
-        if !UserDefaults.standard.bool(forKey: "morph.welcomed") {
-            UserDefaults.standard.set(true, forKey: "morph.welcomed")
-            hud.show(.info, title: "Morph is ready", subtitle: "Hold ⇧ while dragging any file")
+        if !UserDefaults.standard.bool(forKey: "convmog.welcomed") {
+            UserDefaults.standard.set(true, forKey: "convmog.welcomed")
+            hud.show(.info, title: "Convmog is ready", subtitle: "Hold ⇧ while dragging any file")
         }
     }
 
@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 subtitle = "\(f.string(fromByteCount: before)) → \(f.string(fromByteCount: after))\(delta)"
             }
             hud.show(.done, title: title, subtitle: subtitle)
-            if UserDefaults.standard.object(forKey: "morph.sounds") as? Bool ?? true {
+            if UserDefaults.standard.object(forKey: "convmog.sounds") as? Bool ?? true {
                 let s = NSSound(named: "Pop")
                 s?.volume = 0.35
                 s?.play()
@@ -137,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func buildStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "Morph")
+            let image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "Convmog")
             image?.isTemplate = true
             button.image = image
         }
@@ -162,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let sounds = NSMenuItem(title: "Play Sound When Done", action: #selector(toggleSounds), keyEquivalent: "")
         sounds.target = self
-        sounds.state = (UserDefaults.standard.object(forKey: "morph.sounds") as? Bool ?? true) ? .on : .off
+        sounds.state = (UserDefaults.standard.object(forKey: "convmog.sounds") as? Bool ?? true) ? .on : .off
         menu.addItem(sounds)
 
         let login = NSMenuItem(title: "Open at Login", action: #selector(toggleLogin), keyEquivalent: "")
@@ -171,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(login)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Morph", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Convmog", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     private static func note(_ title: String) -> NSMenuItem {
@@ -181,8 +181,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleSounds() {
-        let on = UserDefaults.standard.object(forKey: "morph.sounds") as? Bool ?? true
-        UserDefaults.standard.set(!on, forKey: "morph.sounds")
+        let on = UserDefaults.standard.object(forKey: "convmog.sounds") as? Bool ?? true
+        UserDefaults.standard.set(!on, forKey: "convmog.sounds")
     }
 
     @objc private func toggleLogin() {

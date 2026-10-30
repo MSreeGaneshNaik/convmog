@@ -179,7 +179,7 @@ final class WheelView: NSView {
         registerForDraggedTypes([.fileURL])
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
-        setAccessibilityLabel("Morph conversion wheel")
+        setAccessibilityLabel("Convmog conversion wheel")
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }

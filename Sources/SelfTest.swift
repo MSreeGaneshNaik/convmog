@@ -1,6 +1,6 @@
 import Foundation
 
-/// `Morph --selftest` checks what a wrong drop would depend on: wedge maths, naming, file kinds.
+/// `Convmog --selftest` checks what a wrong drop would depend on: wedge maths, naming, file kinds.
 /// build.sh runs it after compiling and refuses to install if anything fails.
 enum SelfTest {
     static func run() -> Bool {
@@ -19,7 +19,7 @@ enum SelfTest {
 
         // Results never overwrite anything: a clash gets " 2".
         let fm = FileManager.default
-        let dir = fm.temporaryDirectory.appendingPathComponent("morph-selftest-\(UUID().uuidString)")
+        let dir = fm.temporaryDirectory.appendingPathComponent("convmog-selftest-\(UUID().uuidString)")
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: dir) }
         fm.createFile(atPath: dir.appendingPathComponent("photo.heic").path, contents: Data())

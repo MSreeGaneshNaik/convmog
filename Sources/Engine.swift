@@ -5,7 +5,7 @@ import ImageIO
 import CoreImage
 import UniformTypeIdentifiers
 
-struct MorphError: LocalizedError {
+struct ConvmogError: LocalizedError {
     let message: String
     init(_ message: String) { self.message = message }
     var errorDescription: String? { message }
@@ -81,7 +81,7 @@ enum Engine {
         guard p.terminationStatus == 0 else {
             let tool = URL(fileURLWithPath: exe).lastPathComponent
             let last = text.split(separator: "\n").last.map(String.init) ?? ""
-            throw MorphError(last.isEmpty ? "\(tool) stopped (code \(p.terminationStatus))" : "\(tool): \(last)")
+            throw ConvmogError(last.isEmpty ? "\(tool) stopped (code \(p.terminationStatus))" : "\(tool): \(last)")
         }
         return text
     }
@@ -104,7 +104,7 @@ enum Engine {
     /// Decodes upright (EXIF orientation applied), optionally downscaled with high quality.
     static func loadImage(_ url: URL, maxPixel: Int? = nil) throws -> CGImage {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-            throw MorphError("Can't read \(url.lastPathComponent)")
+            throw ConvmogError("Can't read \(url.lastPathComponent)")
         }
         var opts: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -115,7 +115,7 @@ enum Engine {
             opts[kCGImageSourceThumbnailMaxPixelSize] = m
         }
         guard let image = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else {
-            throw MorphError("Can't decode \(url.lastPathComponent)")
+            throw ConvmogError("Can't decode \(url.lastPathComponent)")
         }
         return image
     }
@@ -136,14 +136,14 @@ enum Engine {
 
     static func writeImage(_ image: CGImage, to out: URL, uti: String, quality: Double? = nil, props: [CFString: Any] = [:]) throws {
         guard let dest = CGImageDestinationCreateWithURL(out as CFURL, uti as CFString, 1, nil) else {
-            throw MorphError("This Mac can't write .\(out.pathExtension)")
+            throw ConvmogError("This Mac can't write .\(out.pathExtension)")
         }
         var p = props
         if let q = quality { p[kCGImageDestinationLossyCompressionQuality] = q }
         CGImageDestinationAddImage(dest, image, p as CFDictionary)
         guard CGImageDestinationFinalize(dest) else {
             try? FileManager.default.removeItem(at: out)
-            throw MorphError("Couldn't encode .\(out.pathExtension)")
+            throw ConvmogError("Couldn't encode .\(out.pathExtension)")
         }
     }
 
@@ -153,7 +153,7 @@ enum Engine {
         let info = CGImageAlphaInfo.premultipliedLast.rawValue
         let ctx = CGContext(data: nil, width: max(w, 1), height: max(h, 1), bitsPerComponent: 8, bytesPerRow: 0, space: preferred, bitmapInfo: info)
             ?? CGContext(data: nil, width: max(w, 1), height: max(h, 1), bitsPerComponent: 8, bytesPerRow: 0, space: srgb, bitmapInfo: info)
-        guard let c = ctx else { throw MorphError("Not enough memory for that image") }
+        guard let c = ctx else { throw ConvmogError("Not enough memory for that image") }
         c.interpolationQuality = .high
         return c
     }
@@ -171,19 +171,19 @@ enum Engine {
         ctx.setFillColor(CGColor(gray: 1, alpha: 1))
         ctx.fill(r)
         ctx.draw(image, in: r)
-        guard let out = ctx.makeImage() else { throw MorphError("Couldn't flatten the image") }
+        guard let out = ctx.makeImage() else { throw ConvmogError("Couldn't flatten the image") }
         return out
     }
 
     static func squared(_ image: CGImage, side: Int? = nil) throws -> CGImage {
         let s = min(image.width, image.height)
         guard let crop = image.cropping(to: CGRect(x: (image.width - s) / 2, y: (image.height - s) / 2, width: s, height: s)) else {
-            throw MorphError("Couldn't crop the image")
+            throw ConvmogError("Couldn't crop the image")
         }
         guard let side = side else { return crop }
         let ctx = try canvas(side, side, like: crop)
         ctx.draw(crop, in: CGRect(x: 0, y: 0, width: side, height: side))
-        guard let out = ctx.makeImage() else { throw MorphError("Couldn't resize the image") }
+        guard let out = ctx.makeImage() else { throw ConvmogError("Couldn't resize the image") }
         return out
     }
 
@@ -235,7 +235,7 @@ enum Engine {
     }
 
     static func resizeImage(_ src: URL, factor: Double) throws -> URL {
-        guard let size = pixelSize(src) else { throw MorphError("Can't read \(src.lastPathComponent)") }
+        guard let size = pixelSize(src) else { throw ConvmogError("Can't read \(src.lastPathComponent)") }
         let side = max(1, Int(Double(max(size.0, size.1)) * factor))
         return try saveSame(loadImage(src, maxPixel: side), like: src, suffix: "-half")
     }
@@ -256,7 +256,7 @@ enum Engine {
         ctx.translateBy(x: 0, y: CGFloat(w))
         ctx.rotate(by: -.pi / 2)
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        guard let out = ctx.makeImage() else { throw MorphError("Couldn't rotate the image") }
+        guard let out = ctx.makeImage() else { throw ConvmogError("Couldn't rotate the image") }
         return try saveSame(out, like: src, suffix: "-rotated")
     }
 
@@ -266,18 +266,18 @@ enum Engine {
         ctx.translateBy(x: CGFloat(image.width), y: 0)
         ctx.scaleBy(x: -1, y: 1)
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        guard let out = ctx.makeImage() else { throw MorphError("Couldn't flip the image") }
+        guard let out = ctx.makeImage() else { throw ConvmogError("Couldn't flip the image") }
         return try saveSame(out, like: src, suffix: "-flipped")
     }
 
     static func monoImage(_ src: URL) throws -> URL {
         let image = try loadImage(src)
         let input = CIImage(cgImage: image)
-        guard let filter = CIFilter(name: "CIPhotoEffectMono") else { throw MorphError("Mono filter unavailable") }
+        guard let filter = CIFilter(name: "CIPhotoEffectMono") else { throw ConvmogError("Mono filter unavailable") }
         filter.setValue(input, forKey: kCIInputImageKey)
         guard let result = filter.outputImage,
               let out = CIContext().createCGImage(result, from: input.extent) else {
-            throw MorphError("Couldn't process the image")
+            throw ConvmogError("Couldn't process the image")
         }
         return try saveSame(out, like: src, suffix: "-mono")
     }
@@ -289,8 +289,8 @@ enum Engine {
     // MARK: - PDF (PDFKit)
 
     static func openPDF(_ url: URL) throws -> PDFDocument {
-        guard let doc = PDFDocument(url: url) else { throw MorphError("Can't open \(url.lastPathComponent)") }
-        if doc.isLocked { throw MorphError("That PDF is password-protected") }
+        guard let doc = PDFDocument(url: url) else { throw ConvmogError("Can't open \(url.lastPathComponent)") }
+        if doc.isLocked { throw ConvmogError("That PDF is password-protected") }
         return doc
     }
 
@@ -298,7 +298,7 @@ enum Engine {
         let ok = options.isEmpty ? doc.write(to: out) : doc.write(to: out, withOptions: options)
         guard ok else {
             try? FileManager.default.removeItem(at: out)
-            throw MorphError("Couldn't write the PDF")
+            throw ConvmogError("Couldn't write the PDF")
         }
         return out
     }
@@ -313,7 +313,7 @@ enum Engine {
         ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         ctx.scaleBy(x: scale, y: scale)
         page.draw(with: .mediaBox, to: ctx)
-        guard let image = ctx.makeImage() else { throw MorphError("Couldn't render the page") }
+        guard let image = ctx.makeImage() else { throw ConvmogError("Couldn't render the page") }
         return image
     }
 
@@ -331,19 +331,19 @@ enum Engine {
                 let w = CGFloat(image.width), h = CGFloat(image.height)
                 let k = min(1, 842 / max(w, h))   // longest side fits an A4 page, pixels stay full-res
                 guard let page = PDFPage(image: NSImage(cgImage: image, size: NSSize(width: w * k, height: h * k))) else {
-                    throw MorphError("Couldn't place \(u.lastPathComponent)")
+                    throw ConvmogError("Couldn't place \(u.lastPathComponent)")
                 }
                 doc.insert(page, at: doc.pageCount)
             }
         }
-        guard doc.pageCount > 0 else { throw MorphError("Nothing to put in the PDF") }
+        guard doc.pageCount > 0 else { throw ConvmogError("Nothing to put in the PDF") }
         let out = output(urls[0], ext: "pdf", suffix: urls.count > 1 ? " merged" : "")
         return try writePDF(doc, to: out)
     }
 
     static func pdfToImages(_ src: URL, uti: String, ext: String) throws -> URL {
         let doc = try openPDF(src)
-        guard doc.pageCount > 0 else { throw MorphError("That PDF has no pages") }
+        guard doc.pageCount > 0 else { throw ConvmogError("That PDF has no pages") }
         if doc.pageCount == 1, let page = doc.page(at: 0) {
             let image = try render(page)
             let out = output(src, ext: ext)
@@ -362,7 +362,7 @@ enum Engine {
     static func pdfToText(_ src: URL) throws -> URL {
         let text = try openPDF(src).string ?? ""
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw MorphError("No text in this PDF — run OCR first (⇧⌥ drag)")
+            throw ConvmogError("No text in this PDF — run OCR first (⇧⌥ drag)")
         }
         let out = output(src, ext: "txt")
         return try producing(out) { try text.write(to: out, atomically: true, encoding: .utf8) }
@@ -377,14 +377,14 @@ enum Engine {
                 all.append(NSAttributedString(string: "\n\n"))
             }
         }
-        guard all.length > 0 else { throw MorphError("No text in this PDF — run OCR first (⇧⌥ drag)") }
+        guard all.length > 0 else { throw ConvmogError("No text in this PDF — run OCR first (⇧⌥ drag)") }
         let out = output(src, ext: ext)
         return try producing(out) { try writeAttributed(all, to: out, ext: ext) }
     }
 
     static func compressPDF(_ src: URL) throws -> URL {
         let doc = try openPDF(src)
-        guard #available(macOS 13.4, *) else { throw MorphError("PDF compression needs macOS 13.4 or later") }
+        guard #available(macOS 13.4, *) else { throw ConvmogError("PDF compression needs macOS 13.4 or later") }
         return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-small"),
                             options: [.saveImagesAsJPEGOption: true, .optimizeImagesForScreenOption: true])
     }
@@ -396,7 +396,7 @@ enum Engine {
 
     static func splitPDF(_ src: URL) throws -> URL {
         let doc = try openPDF(src)
-        guard doc.pageCount > 1 else { throw MorphError("Only one page — nothing to split") }
+        guard doc.pageCount > 1 else { throw ConvmogError("Only one page — nothing to split") }
         let dir = try folder(src, suffix: " pages")
         let base = src.deletingPathExtension().lastPathComponent
         for i in 0..<doc.pageCount {
@@ -423,7 +423,7 @@ enum Engine {
     }
 
     static func pdfCover(_ src: URL) throws -> URL {
-        guard let page = try openPDF(src).page(at: 0) else { throw MorphError("That PDF has no pages") }
+        guard let page = try openPDF(src).page(at: 0) else { throw ConvmogError("That PDF has no pages") }
         let image = try render(page)
         let out = output(src, ext: "png", suffix: "-cover")
         return try producing(out) { try writeImage(image, to: out, uti: "public.png") }
@@ -439,13 +439,13 @@ enum Engine {
     static func export(_ asset: AVAsset, preset: String, to out: URL, type: AVFileType,
                        clean: Bool = false, range: CMTimeRange? = nil) throws {
         guard let session = AVAssetExportSession(asset: asset, presetName: preset) else {
-            throw MorphError("This Mac can't run that export")
+            throw ConvmogError("This Mac can't run that export")
         }
         guard session.supportedFileTypes.contains(type) else {
             if preset == AVAssetExportPresetPassthrough {
                 return try export(asset, preset: AVAssetExportPresetHighestQuality, to: out, type: type, clean: clean, range: range)
             }
-            throw MorphError("Can't make .\(out.pathExtension) from this file")
+            throw ConvmogError("Can't make .\(out.pathExtension) from this file")
         }
         session.outputURL = out
         session.outputFileType = type
@@ -460,7 +460,7 @@ enum Engine {
         done.wait()
         guard session.status == .completed else {
             try? FileManager.default.removeItem(at: out)
-            throw MorphError(session.error?.localizedDescription ?? "Export failed")
+            throw ConvmogError(session.error?.localizedDescription ?? "Export failed")
         }
     }
 
@@ -481,7 +481,7 @@ enum Engine {
     static func videoToGIF(_ src: URL) throws -> URL {
         let asset = AVURLAsset(url: src)
         let length = min(seconds(asset), 8)
-        guard length > 0 else { throw MorphError("Couldn't read the video") }
+        guard length > 0 else { throw ConvmogError("Couldn't read the video") }
         let fps = 12.0
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
@@ -495,11 +495,11 @@ enum Engine {
             let t = CMTime(seconds: Double(i) / fps, preferredTimescale: 600)
             if let frame = try? gen.copyCGImage(at: t, actualTime: nil) { frames.append(frame) }
         }
-        guard !frames.isEmpty else { throw MorphError("Couldn't read any frames") }
+        guard !frames.isEmpty else { throw ConvmogError("Couldn't read any frames") }
 
         let out = output(src, ext: "gif")
         guard let dest = CGImageDestinationCreateWithURL(out as CFURL, "com.compuserve.gif" as CFString, frames.count, nil) else {
-            throw MorphError("Couldn't create the GIF")
+            throw ConvmogError("Couldn't create the GIF")
         }
         let loop: [CFString: Any] = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]]
         let delay: [CFString: Any] = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 1.0 / fps]]
@@ -507,7 +507,7 @@ enum Engine {
         for frame in frames { CGImageDestinationAddImage(dest, frame, delay as CFDictionary) }
         guard CGImageDestinationFinalize(dest) else {
             try? FileManager.default.removeItem(at: out)
-            throw MorphError("Couldn't encode the GIF")
+            throw ConvmogError("Couldn't encode the GIF")
         }
         return out
     }
@@ -525,7 +525,7 @@ enum Engine {
         let comp = AVMutableComposition()
         guard let video = asset.tracks(withMediaType: .video).first,
               let track = comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-            throw MorphError("No video track found")
+            throw ConvmogError("No video track found")
         }
         try track.insertTimeRange(CMTimeRange(start: .zero, duration: asset.duration), of: video, at: .zero)
         track.preferredTransform = video.preferredTransform
@@ -579,7 +579,7 @@ enum Engine {
     static func ringtone(_ src: URL) throws -> URL {
         let asset = AVURLAsset(url: src)
         let length = min(seconds(asset), 30)
-        guard length > 0 else { throw MorphError("Couldn't read the audio") }
+        guard length > 0 else { throw ConvmogError("Couldn't read the audio") }
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
         try export(asset, preset: AVAssetExportPresetAppleM4A, to: temp, type: .m4a,
                    range: CMTimeRange(start: .zero, duration: CMTime(seconds: length, preferredTimescale: 600)))
@@ -612,7 +612,7 @@ enum Engine {
     ]
 
     static func ff(_ src: URL, ext: String, suffix: String = "", args: [String]? = nil) throws -> URL {
-        guard let bin = ffmpeg else { throw MorphError("Needs ffmpeg — run: brew install ffmpeg") }
+        guard let bin = ffmpeg else { throw ConvmogError("Needs ffmpeg — run: brew install ffmpeg") }
         let out = output(src, ext: ext, suffix: suffix)
         let codec = args ?? ffArgs[ext] ?? []
         return try producing(out) {
@@ -661,7 +661,7 @@ enum Engine {
         let types: [String: NSAttributedString.DocumentType] = [
             "docx": .officeOpenXML, "rtf": .rtf, "html": .html, "odt": .openDocument, "doc": .docFormat, "txt": .plain,
         ]
-        guard let type = types[ext] else { throw MorphError("Can't write .\(ext)") }
+        guard let type = types[ext] else { throw ConvmogError("Can't write .\(ext)") }
         var attrs: [NSAttributedString.DocumentAttributeKey: Any] = [.documentType: type]
         if type == .plain || type == .html { attrs[.characterEncoding] = String.Encoding.utf8.rawValue }
         let data = try onMain { try text.data(from: NSRange(location: 0, length: text.length), documentAttributes: attrs) }
@@ -700,7 +700,7 @@ enum Engine {
             op.showsProgressPanel = false
             return op.run()
         }
-        guard ok else { throw MorphError("Couldn't lay out the PDF") }
+        guard ok else { throw ConvmogError("Couldn't lay out the PDF") }
     }
 
     /// Light Markdown → rich text: headings, bullets, code blocks, and inline bold/italic/code/links.

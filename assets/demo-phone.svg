@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="720" height="900" viewBox="0 0 720 900" role="img" aria-label="Morph demo: a photo is dragged out of Finder, shift is held, a white glass wheel of formats appears around the cursor, the HEIC wedge lights up, and photo.heic appears next to the original.">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="720" height="900" viewBox="0 0 720 900" role="img" aria-label="Convmog demo: a photo is dragged out of Finder, shift is held, a white glass wheel of formats appears around the cursor, the HEIC wedge lights up, and photo.heic appears next to the original.">
 <style>
   .a { transform-box: view-box; animation-duration: 8s; animation-iteration-count: infinite; animation-fill-mode: both; }
   .cursor { animation-name: cursor; transform: translate(513px, 262px); }
