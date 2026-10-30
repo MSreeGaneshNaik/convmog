@@ -313,14 +313,87 @@ enum Engine {
         return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
     }
 
-    static func cropImage(_ src: URL) throws -> URL {
-        let image = try loadImage(src)
-        guard let r = try contentRect(image),
-              Int(r.width) < image.width || Int(r.height) < image.height,
-              let cropped = image.cropping(to: r) else {
-            throw ConvmogError("Nothing to crop — the edges aren't empty")
+    // MARK: Crop. The person picks the area in CropPanel. Areas are 0…1 of the picture, top-left origin,
+    // so the same area means the same thing on a preview, a full-size photo, or any page.
+
+    /// What the crop window shows: a preview, the area to start from (the empty edges already trimmed),
+    /// and the full size with its unit for the size readout.
+    static func cropPreview(_ src: URL) throws -> (image: CGImage, start: CGRect, size: CGSize, unit: String) {
+        let image: CGImage, size: CGSize, unit: String
+        switch Catalog.kind(src) {
+        case .pdf, .doc:
+            let doc = try cropSource(src)
+            guard let page = doc.page(at: 0) else { throw ConvmogError("That PDF has no pages") }
+            let box = page.bounds(for: .cropBox), turned = abs(page.rotation) % 180 == 90
+            image = try render(page, scale: min(3, 1400 / max(box.width, box.height)))
+            size = turned ? CGSize(width: box.height, height: box.width) : box.size
+            unit = "pt"
+        default:
+            image = try loadImage(src, maxPixel: 1600)
+            let full = pixelSize(src) ?? (image.width, image.height)
+            size = CGSize(width: full.0, height: full.1)
+            unit = "px"
         }
-        return try saveSame(cropped, like: src, suffix: "-cropped")
+        let w = CGFloat(image.width), h = CGFloat(image.height)
+        let start = try contentRect(image).map { CGRect(x: $0.minX / w, y: $0.minY / h, width: $0.width / w, height: $0.height / h) }
+            ?? CGRect(x: 0, y: 0, width: 1, height: 1)
+        return (image, start, size, unit)
+    }
+
+    static func crop(_ src: URL, to area: CGRect) throws -> URL {
+        switch Catalog.kind(src) {
+        case .pdf, .doc:
+            let doc = try cropSource(src)
+            cropPages(doc, to: area)
+            return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-cropped"))
+        default:
+            let image = try loadImage(src)
+            guard let cropped = image.cropping(to: pixels(area, in: image)) else { throw ConvmogError("Couldn't crop the image") }
+            return try saveSame(cropped, like: src, suffix: "-cropped")
+        }
+    }
+
+    /// A PDF to crop: the file itself, or a document laid out on A4 pages.
+    private static func cropSource(_ src: URL) throws -> PDFDocument {
+        if Catalog.kind(src) == .pdf { return try openPDF(src) }
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("convmog-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: temp) }
+        try printPDF(loadDoc(src), to: temp)
+        guard let data = try? Data(contentsOf: temp), let doc = PDFDocument(data: data) else {
+            throw ConvmogError("Couldn't lay out \(src.lastPathComponent)")
+        }
+        return doc
+    }
+
+    /// An area (0…1, top-left origin) as whole pixels of `image`, at least 1×1 and inside it.
+    static func pixels(_ area: CGRect, in image: CGImage) -> CGRect {
+        let w = CGFloat(image.width), h = CGFloat(image.height)
+        let x0 = min(max((area.minX * w).rounded(), 0), w - 1), y0 = min(max((area.minY * h).rounded(), 0), h - 1)
+        let x1 = max(min((area.maxX * w).rounded(), w), x0 + 1), y1 = max(min((area.maxY * h).rounded(), h), y0 + 1)
+        return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+
+    /// The same area on every page, measured on the page as it is shown (its crop box and rotation).
+    static func cropPages(_ doc: PDFDocument, to area: CGRect) {
+        for i in 0..<doc.pageCount {
+            guard let page = doc.page(at: i) else { continue }
+            let a = unrotate(area, by: page.rotation)
+            let shown = page.bounds(for: .cropBox)
+            // y runs down in the area and up in PDF points.
+            let box = CGRect(x: shown.minX + a.minX * shown.width, y: shown.minY + (1 - a.maxY) * shown.height,
+                             width: a.width * shown.width, height: a.height * shown.height)
+            page.setBounds(box.intersection(shown), for: .cropBox)
+        }
+    }
+
+    /// An area on a page shown turned clockwise by `degrees`, as the same area on the unturned page.
+    static func unrotate(_ a: CGRect, by degrees: Int) -> CGRect {
+        switch ((degrees % 360) + 360) % 360 {
+        case 90: return CGRect(x: a.minY, y: 1 - a.maxX, width: a.height, height: a.width)
+        case 180: return CGRect(x: 1 - a.maxX, y: 1 - a.maxY, width: a.width, height: a.height)
+        case 270: return CGRect(x: 1 - a.maxY, y: a.minX, width: a.height, height: a.width)
+        default: return a
+        }
     }
 
     static func monoImage(_ src: URL) throws -> URL {
@@ -356,8 +429,9 @@ enum Engine {
         return out
     }
 
+    /// The page as a viewer shows it: its crop box, turned by its rotation.
     static func render(_ page: PDFPage, scale: CGFloat = 2) throws -> CGImage {
-        let box = page.bounds(for: .mediaBox)
+        let box = page.bounds(for: .cropBox)
         let turned = abs(page.rotation) % 180 == 90
         let w = Int(((turned ? box.height : box.width) * scale).rounded())
         let h = Int(((turned ? box.width : box.height) * scale).rounded())
@@ -365,7 +439,7 @@ enum Engine {
         ctx.setFillColor(CGColor(gray: 1, alpha: 1))
         ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         ctx.scaleBy(x: scale, y: scale)
-        page.draw(with: .mediaBox, to: ctx)
+        page.draw(with: .cropBox, to: ctx)
         guard let image = ctx.makeImage() else { throw ConvmogError("Couldn't render the page") }
         return image
     }
@@ -467,35 +541,6 @@ enum Engine {
             if let page = doc.page(at: i) { page.rotation = (page.rotation + 90) % 360 }
         }
         return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-rotated"))
-    }
-
-    /// Trims each page's crop box to what's printed on it. Returns false when no page had empty edges.
-    static func cropPages(_ doc: PDFDocument) throws -> Bool {
-        let scale: CGFloat = 2
-        var changed = false
-        for i in 0..<doc.pageCount {
-            // shortcut: rotated pages are left as they are; map the box through the rotation if people need them.
-            guard let page = doc.page(at: i), page.rotation % 360 == 0 else { continue }
-            let media = page.bounds(for: .mediaBox)
-            let image = try render(page, scale: scale)
-            guard let r = try contentRect(image) else { continue }
-            // Pixels run top-down from the media box's top-left; PDF points run bottom-up. 2pt of air around the ink.
-            let ink = CGRect(x: media.minX + r.minX / scale - 2,
-                             y: media.minY + (CGFloat(image.height) - r.maxY) / scale - 2,
-                             width: r.width / scale + 4, height: r.height / scale + 4)
-            let current = page.bounds(for: .cropBox)
-            let trimmed = ink.intersection(current)
-            guard !trimmed.isNull, trimmed.width < current.width - 1 || trimmed.height < current.height - 1 else { continue }
-            page.setBounds(trimmed, for: .cropBox)
-            changed = true
-        }
-        return changed
-    }
-
-    static func cropPDF(_ src: URL) throws -> URL {
-        let doc = try openPDF(src)
-        guard try cropPages(doc) else { throw ConvmogError("Nothing to crop — the margins are already tight") }
-        return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-cropped"))
     }
 
     static func stripPDF(_ src: URL) throws -> URL {
@@ -718,16 +763,6 @@ enum Engine {
             return try producing(out) { try writeAttributed(text, to: out, ext: ext) }
         }
         return try producing(out) { try run("/usr/bin/textutil", ["-convert", ext, "-output", out.path, src.path]) }
-    }
-
-    /// A document laid out as a PDF with the page margins trimmed to the text.
-    static func cropDoc(_ src: URL) throws -> URL {
-        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("convmog-\(UUID().uuidString).pdf")
-        defer { try? FileManager.default.removeItem(at: temp) }
-        try printPDF(loadDoc(src), to: temp)
-        let doc = try openPDF(temp)
-        _ = try cropPages(doc)
-        return try writePDF(doc, to: output(src, ext: "pdf", suffix: "-cropped"))
     }
 
     static func mergeDocs(_ urls: [URL]) throws -> URL {

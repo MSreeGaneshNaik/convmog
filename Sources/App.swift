@@ -65,11 +65,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Work
 
     private func run(_ action: Action, on urls: [URL]) {
+        switch action.work {
+        case .now(let job): start(job, action.verb, on: urls)
+        case .ask(let ask): ask(urls) { [weak self] job in self?.start(job, action.verb, on: urls) }
+        }
+    }
+
+    private func start(_ job: @escaping Job, _ verb: String, on urls: [URL]) {
         nextID += 1
-        queue.append((nextID, action.verb, Self.describe(urls)))
-        if queue.count == 1 { hud.show(.working, title: action.verb, subtitle: Self.describe(urls)) }
+        queue.append((nextID, verb, Self.describe(urls)))
+        if queue.count == 1 { hud.show(.working, title: verb, subtitle: Self.describe(urls)) }
         let before = Self.bytes(urls)
-        let job = action.run
         work.async {
             let result = Result { try job(urls) }
             Task { @MainActor in self.finish(result, before: before) }
