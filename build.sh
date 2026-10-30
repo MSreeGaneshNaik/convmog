@@ -2,6 +2,7 @@
 # Builds Convmog.app with the Swift compiler that ships with Xcode's Command Line Tools.
 #   ./build.sh            build and launch from ./build
 #   ./build.sh --install  build, copy to /Applications, and launch
+#   ./build.sh --check    build and self-test only (what CI runs)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -39,6 +40,7 @@ fi
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 "$APP/Contents/MacOS/Convmog" --selftest || { echo "✗ Self-test failed — not launching this build."; exit 1; }
 echo "✓ Built $APP"
+[[ "${1:-}" == "--check" ]] && exit 0
 
 pkill -x Convmog 2>/dev/null || true
 sleep 0.3
