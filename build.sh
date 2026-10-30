@@ -26,6 +26,13 @@ swiftc -O -parse-as-library -swift-version 5 -suppress-warnings \
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
+# Stamp the commit this build came from, so install.sh can tell whether an update is needed.
+if [ -z "${CONVMOG_COMMIT:-}" ] && git rev-parse HEAD >/dev/null 2>&1; then
+  CONVMOG_COMMIT="$(git rev-parse HEAD)"
+  git diff --quiet HEAD 2>/dev/null || CONVMOG_COMMIT="${CONVMOG_COMMIT}-dirty"
+fi
+plutil -insert ConvmogCommit -string "${CONVMOG_COMMIT:-unknown}" "$APP/Contents/Info.plist"
+
 # App icon: one 1024px master → every size macOS wants (sips + iconutil are built in).
 if [ -f Resources/AppIcon.png ]; then
   ICONSET="build/AppIcon.iconset"
