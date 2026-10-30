@@ -152,6 +152,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(Self.note(Engine.ffmpeg != nil ? "Engines: macOS + ffmpeg" : "Engines: macOS built-ins"))
         if Engine.ffmpeg == nil { menu.addItem(Self.note("brew install ffmpeg for MP3, WebM, MKV…")) }
+        if let commit = Bundle.main.object(forInfoDictionaryKey: "ConvmogCommit") as? String {
+            menu.addItem(Self.note("Version \(commit.prefix(7))"))
+        }
         menu.addItem(.separator())
 
         let reveal = NSMenuItem(title: "Show Last Result", action: lastOutputs.isEmpty ? nil : #selector(revealLast), keyEquivalent: "")

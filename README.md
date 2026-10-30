@@ -28,6 +28,10 @@ It downloads the source, builds Convmog on your Mac with Apple's own Swift compi
 
 Convmog needs macOS 13 or later and Apple's Command Line Tools. If they're missing, the installer opens Apple's installer for you — run the same line again when it finishes.
 
+### Update
+
+Run the same line again. It compares the version you have with the latest on GitHub: if they match it says **Convmog is up to date** and stops; if not, it downloads, rebuilds and replaces the app in place, keeping your settings. The menu bar menu shows which version you're on. To rebuild even when you're up to date, put `CONVMOG_FORCE=1` in front of `bash`: `curl -fsSL … | CONVMOG_FORCE=1 bash`.
+
 ## How it works
 
 | You | Convmog |
