@@ -13,7 +13,7 @@ if ! command -v swiftc >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "→ Compiling Convmog for $ARCH…"
+echo "→ Compiling Convmog for ${ARCH}…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
