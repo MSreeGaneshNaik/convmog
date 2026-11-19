@@ -116,3 +116,7 @@ There is no Xcode project — just `swiftc` and about 3,100 lines of Swift.
 ## Credits
 
 Convmog is made by Jericho, and the petal mark is Jericho's. The ⇧-drag radial gesture was inspired by Tangerine, a Mac app by Leap Studio. Convmog is an independent, from-scratch implementation.
+
+## License
+
+Convmog is open source under the [MIT License](LICENSE).
